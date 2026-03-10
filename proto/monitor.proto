@@ -1,0 +1,64 @@
+syntax = "proto3";
+
+package monitor;
+
+option go_package = "github.com/Madeena-software/madeena-server-monitor/proto/monitorpb";
+
+// ServerMonitor exposes system metrics over gRPC.
+// NOTE: This is a skeleton definition for a future gRPC integration.
+//       A Python client will call this Go server to retrieve live metrics.
+service ServerMonitor {
+  // GetSystemStats returns a complete snapshot of all monitored system metrics.
+  rpc GetSystemStats(SystemStatsRequest) returns (SystemStatsResponse);
+}
+
+// SystemStatsRequest is currently empty; reserved for future filtering options.
+message SystemStatsRequest {}
+
+// SystemStatsResponse contains the complete set of monitored system metrics.
+message SystemStatsResponse {
+  // --- CPU ---
+  double cpu_usage_percent  = 1;  // Overall CPU usage (%)
+  double load_avg_1m        = 2;  // 1-minute load average
+  double load_avg_5m        = 3;  // 5-minute load average
+  double load_avg_15m       = 4;  // 15-minute load average
+  double cpu_temp_celsius   = 5;  // CPU temperature in °C (0 if unavailable)
+
+  // --- Memory ---
+  uint64 mem_total_mb       = 6;  // Total RAM (MB)
+  uint64 mem_used_mb        = 7;  // Used RAM (MB)
+  uint64 mem_free_mb        = 8;  // Available RAM (MB)
+  double mem_percent        = 9;  // RAM usage (%)
+
+  // --- Disk (Root /) ---
+  double root_disk_total_gb   = 10; // Root partition total (GB)
+  double root_disk_used_gb    = 11; // Root partition used (GB)
+  double root_disk_free_gb    = 12; // Root partition free (GB)
+  double root_disk_percent    = 13; // Root partition usage (%)
+
+  // --- Data Partitions ---
+  // Map of mount point → DiskInfo for additional monitored partitions.
+  map<string, DiskInfo> data_disks = 14;
+
+  // --- S.M.A.R.T. Health ---
+  // Map of device path → status string ("PASSED", "FAILED", "UNKNOWN").
+  map<string, string> smart_health = 15;
+
+  // --- Network ---
+  double net_rx_bytes_per_sec = 16; // Receive rate (bytes/sec)
+  double net_tx_bytes_per_sec = 17; // Transmit rate (bytes/sec)
+
+  // --- Uptime ---
+  int64 uptime_seconds = 18; // System uptime in seconds
+
+  // --- Timestamp ---
+  int64 collected_at_unix = 19; // Unix timestamp when metrics were collected
+}
+
+// DiskInfo holds usage stats for a single disk partition.
+message DiskInfo {
+  double total_gb     = 1;
+  double used_gb      = 2;
+  double free_gb      = 3;
+  double used_percent = 4;
+}

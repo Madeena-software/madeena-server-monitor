@@ -1,0 +1,25 @@
+version: "3.9"
+
+services:
+  monitor:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: madeena-server-monitor:latest
+    container_name: madeena-monitor
+    restart: unless-stopped
+    # Mount the .env file at runtime so secrets are never baked into the image.
+    env_file:
+      - .env
+    # Grant access to host devices for S.M.A.R.T. checks (optional).
+    # Remove these lines if running without hardware access.
+    privileged: false
+    devices:
+      - /dev/sda
+      - /dev/sdb
+    # Required to read host-level metrics (CPU, memory, network, uptime).
+    pid: host
+    network_mode: host
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
