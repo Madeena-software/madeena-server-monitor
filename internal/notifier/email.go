@@ -43,14 +43,23 @@ func (e *Emailer) send(subject, body string) error {
 	m.SetBody("text/plain", body)
 
 	d := gomail.NewDialer(e.cfg.SMTPHost, e.cfg.SMTPPort, e.cfg.SMTPUser, e.cfg.SMTPPass)
-	// Use TLS for port 465, STARTTLS for 587 (gomail handles this automatically
-	// for port 465 via DialAndSend). For port 587 we set TLSConfig explicitly.
+	
+	// Konfigurasi Keamanan Berdasarkan Port
 	if e.cfg.SMTPPort == 465 {
+		// SSL murni untuk port 465
 		d.SSL = true
-	} else {
+	} else if e.cfg.SMTPPort == 587 {
+		// STARTTLS untuk port 587
 		d.TLSConfig = &tls.Config{
 			ServerName: e.cfg.SMTPHost,
 			MinVersion: tls.VersionTLS12,
+		}
+	} else {
+		// Jika port 25 (Local SMTP / Postfix) atau port kustom lainnya, 
+		// kita bisa mematikan wajib TLS, membiarkan server lokal menerimanya
+		// tanpa enkripsi (aman karena hanya internal).
+		d.TLSConfig = &tls.Config{
+			InsecureSkipVerify: true, // Abaikan validasi sertifikat lokal
 		}
 	}
 
