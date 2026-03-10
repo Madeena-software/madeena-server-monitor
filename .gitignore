@@ -1,0 +1,26 @@
+# Binaries / build output
+/bin/
+/monitor
+
+# Go build cache
+*.test
+*.out
+coverage.html
+
+# Environment / secrets – never commit real credentials
+.env
+
+# macOS
+.DS_Store
+
+# Editor directories
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Generated protobuf stubs
+proto/monitorpb/
+
+# Docker
+docker-compose.override.yml

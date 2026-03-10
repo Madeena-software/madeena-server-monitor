@@ -1,0 +1,26 @@
+[Unit]
+Description=Madeena Server Monitor
+Documentation=https://github.com/Madeena-software/madeena-server-monitor
+After=network.target
+
+[Service]
+Type=simple
+User=madeena-monitor
+Group=madeena-monitor
+WorkingDirectory=/opt/madeena-monitor
+EnvironmentFile=/opt/madeena-monitor/.env
+ExecStart=/opt/madeena-monitor/monitor
+Restart=on-failure
+RestartSec=10s
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=madeena-monitor
+
+# Security hardening
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/opt/madeena-monitor
+
+[Install]
+WantedBy=multi-user.target
