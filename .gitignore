@@ -1,6 +1,7 @@
 # Binaries / build output
 /bin/
 /monitor
+*.sh
 
 # Go build cache
 *.test
