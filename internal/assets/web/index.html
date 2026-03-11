@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Madeena Server Monitor</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"
+          integrity="sha256-B96atdFP8/FUkM8EoOKgWmgTZSv1qJivHDTM4RJT3JU="
+          crossorigin="anonymous"></script>
+  <style>
+    body { background: #0f172a; color: #e2e8f0; font-family: 'Segoe UI', system-ui, sans-serif; }
+    .card { background: #1e293b; border: 1px solid #334155; border-radius: 0.5rem; }
+    .badge-ok    { background:#166534; color:#bbf7d0; }
+    .badge-warn  { background:#854d0e; color:#fef08a; }
+    .badge-crit  { background:#7f1d1d; color:#fecaca; }
+    .badge-na    { background:#374151; color:#9ca3af; }
+    th { background: #1e3a5f; color:#93c5fd; font-size:0.7rem; text-transform:uppercase; letter-spacing:.05em; }
+    tr:nth-child(even) td { background: #1a2740; }
+    tr:hover td { background: #243456 !important; }
+    td { font-size: 0.78rem; }
+    .section-header { background:#0f2544; color:#60a5fa; font-weight:700; font-size:0.75rem; letter-spacing:.08em; text-transform:uppercase; }
+    canvas { max-height: 180px; }
+    .status-dot { display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:5px; }
+    .dot-ok   { background:#22c55e; }
+    .dot-warn { background:#eab308; }
+    .dot-crit { background:#ef4444; animation: pulse 1s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+    #toast { transition: opacity 0.4s; }
+  </style>
+</head>
+<body class="min-h-screen p-4">
+
+<!-- Header -->
+<div class="flex items-center justify-between mb-4 card px-4 py-3">
+  <div class="flex items-center gap-3">
+    <svg class="w-7 h-7 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+        d="M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2V9M9 21H5a2 2 0 01-2-2V9m0 0h18"/>
+    </svg>
+    <div>
+      <h1 class="text-lg font-bold text-blue-300">Madeena Server Monitor</h1>
+      <p class="text-xs text-slate-400">Live Hardware Dashboard — HWMonitor Style</p>
+    </div>
+  </div>
+  <div class="text-right">
+    <div id="statusBadge" class="inline-flex items-center px-2 py-1 rounded text-xs badge-na">
+      <span class="status-dot dot-warn"></span> Connecting…
+    </div>
+    <div class="text-xs text-slate-400 mt-1">Uptime: <span id="uptime">–</span></div>
+    <div class="text-xs text-slate-400">Load: <span id="loadavg">–</span></div>
+  </div>
+</div>
+
+<!-- Toast notification -->
+<div id="toast" class="fixed top-4 right-4 z-50 px-4 py-2 rounded text-sm font-medium opacity-0 pointer-events-none max-w-xs"
+     style="background:#7f1d1d; color:#fecaca; border:1px solid #ef4444"></div>
+
+<!-- Charts Grid -->
+<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 mb-4">
+  <div class="card p-3"><p class="text-xs text-slate-400 mb-1">CPU Total Usage (%)</p><canvas id="chartCPU"></canvas></div>
+  <div class="card p-3"><p class="text-xs text-slate-400 mb-1">RAM Usage (%)</p><canvas id="chartRAM"></canvas></div>
+  <div class="card p-3"><p class="text-xs text-slate-400 mb-1">CPU Temperature (°C)</p><canvas id="chartTemp"></canvas></div>
+  <div class="card p-3"><p class="text-xs text-slate-400 mb-1">Root Disk Usage (%)</p><canvas id="chartDisk"></canvas></div>
+  <div class="card p-3"><p class="text-xs text-slate-400 mb-1">Network Rx (KB/s)</p><canvas id="chartNetRx"></canvas></div>
+  <div class="card p-3"><p class="text-xs text-slate-400 mb-1">Network Tx (KB/s)</p><canvas id="chartNetTx"></canvas></div>
+</div>
+
+<!-- Sensor Table -->
+<div class="card overflow-hidden">
+  <table class="w-full border-collapse">
+    <thead>
+      <tr>
+        <th class="text-left px-3 py-2 w-1/2">Sensor / Component</th>
+        <th class="text-right px-3 py-2 w-1/6">Value</th>
+        <th class="text-right px-3 py-2 w-1/6">Min</th>
+        <th class="text-right px-3 py-2 w-1/6">Max</th>
+      </tr>
+    </thead>
+    <tbody id="sensorTable">
+      <tr><td colspan="4" class="text-center py-8 text-slate-500">Waiting for data…</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- S.M.A.R.T Health -->
+<div class="card mt-4 p-4">
+  <h2 class="text-xs font-bold text-blue-400 uppercase tracking-widest mb-2">S.M.A.R.T Disk Health</h2>
+  <div id="smartHealth" class="flex flex-wrap gap-2 text-xs">–</div>
+</div>
+
+<script>
+// ─── Chart Helpers ─────────────────────────────────────────────────────────
+const CHART_COLORS = {
+  cpu:    { border:'#60a5fa', bg:'rgba(96,165,250,0.15)' },
+  ram:    { border:'#a78bfa', bg:'rgba(167,139,250,0.15)' },
+  temp:   { border:'#f87171', bg:'rgba(248,113,113,0.15)' },
+  disk:   { border:'#fb923c', bg:'rgba(251,146,60,0.15)'  },
+  netrx:  { border:'#34d399', bg:'rgba(52,211,153,0.15)' },
+  nettx:  { border:'#fbbf24', bg:'rgba(251,191,36,0.15)' },
+};
+
+function makeChart(id, key) {
+  const c = CHART_COLORS[key];
+  return new Chart(document.getElementById(id), {
+    type: 'line',
+    data: { labels: [], datasets: [{ data: [], borderColor: c.border, backgroundColor: c.bg,
+      borderWidth: 2, pointRadius: 0, fill: true, tension: 0.3 }] },
+    options: {
+      animation: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { display: false },
+        y: { min: 0, grid: { color:'rgba(255,255,255,0.05)' },
+             ticks: { color:'#94a3b8', font:{size:10} } }
+      },
+      interaction: { mode:'nearest', intersect:false }
+    }
+  });
+}
+
+const charts = {
+  cpu:   makeChart('chartCPU',   'cpu'),
+  ram:   makeChart('chartRAM',   'ram'),
+  temp:  makeChart('chartTemp',  'temp'),
+  disk:  makeChart('chartDisk',  'disk'),
+  netrx: makeChart('chartNetRx', 'netrx'),
+  nettx: makeChart('chartNetTx', 'nettx'),
+};
+
+function updateChart(chart, labels, data) {
+  chart.data.labels = labels;
+  chart.data.datasets[0].data = data;
+  chart.update('none');
+}
+
+// ─── Toast ──────────────────────────────────────────────────────────────────
+let toastTimer = null;
+function showToast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.style.opacity = '1';
+  el.style.pointerEvents = 'auto';
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { el.style.opacity = '0'; el.style.pointerEvents = 'none'; }, 8000);
+}
+
+// ─── Formatting ─────────────────────────────────────────────────────────────
+const fmtPct  = v => v.toFixed(1) + ' %';
+const fmtTemp = v => v === 0 ? 'N/A' : v.toFixed(1) + ' °C';
+const fmtMHz  = v => v.toFixed(0) + ' MHz';
+const fmtRPM  = v => v.toFixed(0) + ' RPM';
+const fmtV    = v => v.toFixed(3) + ' V';
+const fmtKB   = v => (v / 1024).toFixed(1) + ' KB/s';
+const fmtGB   = v => v.toFixed(1) + ' GB';
+
+function pctClass(v, warn=70, crit=90) {
+  if (v >= crit) return 'badge-crit';
+  if (v >= warn) return 'badge-warn';
+  return 'badge-ok';
+}
+function tempClass(v) {
+  if (v >= 85) return 'badge-crit';
+  if (v >= 70) return 'badge-warn';
+  if (v === 0) return 'badge-na';
+  return 'badge-ok';
+}
+
+// ─── Table Builder ──────────────────────────────────────────────────────────
+function sectionRow(label) {
+  return `<tr><td colspan="4" class="section-header px-3 py-1">▸ ${label}</td></tr>`;
+}
+
+function sensorRow(name, value, min, max, cls='') {
+  return `<tr>
+    <td class="px-3 py-1.5 text-slate-300">${name}</td>
+    <td class="px-3 py-1.5 text-right"><span class="px-1.5 py-0.5 rounded text-xs ${cls}">${value}</span></td>
+    <td class="px-3 py-1.5 text-right text-slate-400">${min}</td>
+    <td class="px-3 py-1.5 text-right text-slate-400">${max}</td>
+  </tr>`;
+}
+
+function buildTable(d) {
+  let rows = '';
+
+  // ── Voltages ──
+  if (d.voltages && d.voltages.length) {
+    rows += sectionRow('Voltages');
+    d.voltages.forEach(s => {
+      rows += sensorRow(s.name, fmtV(s.value), fmtV(s.min), fmtV(s.max));
+    });
+  }
+
+  // ── Temperatures ──
+  rows += sectionRow('Temperatures');
+  if (d.temperatures && d.temperatures.length) {
+    d.temperatures.forEach(s => {
+      rows += sensorRow(s.name, fmtTemp(s.value), fmtTemp(s.min), fmtTemp(s.max), tempClass(s.value));
+    });
+  } else {
+    // Fallback: show aggregate CPU temp
+    rows += sensorRow('CPU Temp (max)', fmtTemp(d.temp_main.value),
+                       fmtTemp(d.temp_main.min), fmtTemp(d.temp_main.max), tempClass(d.temp_main.value));
+  }
+
+  // ── Fans ──
+  if (d.fans && d.fans.length) {
+    rows += sectionRow('Fans');
+    d.fans.forEach(s => {
+      rows += sensorRow(s.name, fmtRPM(s.value), fmtRPM(s.min), fmtRPM(s.max));
+    });
+  }
+
+  // ── Utilization ──
+  rows += sectionRow('Utilization');
+  rows += sensorRow('CPU Total', fmtPct(d.cpu_total.value), fmtPct(d.cpu_total.min), fmtPct(d.cpu_total.max), pctClass(d.cpu_total.value));
+  rows += sensorRow('RAM', fmtPct(d.ram.value), fmtPct(d.ram.min), fmtPct(d.ram.max), pctClass(d.ram.value));
+  if (d.cpu_cores && d.cpu_cores.length) {
+    d.cpu_cores.forEach(s => {
+      rows += sensorRow(s.name, fmtPct(s.value), fmtPct(s.min), fmtPct(s.max), pctClass(s.value));
+    });
+  }
+
+  // ── Clock Speeds ──
+  if (d.cpu_clocks_mhz && d.cpu_clocks_mhz.length) {
+    rows += sectionRow('Clock Speeds');
+    d.cpu_clocks_mhz.forEach(s => {
+      rows += sensorRow(s.name, fmtMHz(s.value), fmtMHz(s.min), fmtMHz(s.max));
+    });
+  }
+
+  // ── Space / Disk ──
+  rows += sectionRow('Space / Disk');
+  rows += sensorRow('Root Disk /', fmtPct(d.root_disk.value), fmtPct(d.root_disk.min), fmtPct(d.root_disk.max), pctClass(d.root_disk.value));
+  if (d.data_disks && d.data_disks.length) {
+    d.data_disks.forEach(s => {
+      rows += sensorRow(s.name, fmtPct(s.value), fmtPct(s.min), fmtPct(s.max), pctClass(s.value));
+    });
+  }
+
+  // ── Network ──
+  rows += sectionRow('Network');
+  rows += sensorRow('Rx Rate', fmtKB(d.net_rx.value), fmtKB(d.net_rx.min), fmtKB(d.net_rx.max));
+  rows += sensorRow('Tx Rate', fmtKB(d.net_tx.value), fmtKB(d.net_tx.min), fmtKB(d.net_tx.max));
+
+  document.getElementById('sensorTable').innerHTML = rows;
+}
+
+// ─── Status badge ────────────────────────────────────────────────────────────
+function updateStatus(connected) {
+  const el = document.getElementById('statusBadge');
+  if (connected) {
+    el.className = 'inline-flex items-center px-2 py-1 rounded text-xs badge-ok';
+    el.innerHTML = '<span class="status-dot dot-ok"></span> Live';
+  } else {
+    el.className = 'inline-flex items-center px-2 py-1 rounded text-xs badge-warn';
+    el.innerHTML = '<span class="status-dot dot-warn"></span> Reconnecting…';
+  }
+}
+
+// ─── S.M.A.R.T ───────────────────────────────────────────────────────────────
+function updateSmart(health) {
+  if (!health) { document.getElementById('smartHealth').innerHTML = '–'; return; }
+  const el = document.getElementById('smartHealth');
+  const entries = Object.entries(health);
+  if (!entries.length) { el.innerHTML = '<span class="text-slate-500">No devices</span>'; return; }
+  el.innerHTML = entries.map(([dev, s]) => {
+    const cls = s === 'PASSED' ? 'badge-ok' : s === 'FAILED' ? 'badge-crit' : 'badge-na';
+    return `<span class="px-2 py-1 rounded ${cls}">${dev}: ${s}</span>`;
+  }).join('');
+}
+
+// ─── History Loader ─────────────────────────────────────────────────────────
+async function loadHistory() {
+  try {
+    const r = await fetch('/api/metrics/history');
+    const h = await r.json();
+    updateChart(charts.cpu,   h.labels, h.cpu_total);
+    updateChart(charts.ram,   h.labels, h.ram);
+    updateChart(charts.temp,  h.labels, h.temp_main);
+    updateChart(charts.disk,  h.labels, h.root_disk);
+    updateChart(charts.netrx, h.labels, h.net_rx.map(v => v / 1024));
+    updateChart(charts.nettx, h.labels, h.net_tx.map(v => v / 1024));
+  } catch(e) { console.warn('history load failed', e); }
+}
+
+// ─── SSE ─────────────────────────────────────────────────────────────────────
+let lastCritical = '';
+let sseBackoff = 1000; // ms, doubles on each failure up to 30s
+function connectSSE() {
+  const es = new EventSource('/api/metrics/live');
+
+  es.onopen = () => { updateStatus(true); sseBackoff = 1000; };
+
+  es.onmessage = (ev) => {
+    try {
+      const d = JSON.parse(ev.data);
+
+      // Header info
+      document.getElementById('uptime').textContent  = d.uptime || '–';
+      document.getElementById('loadavg').textContent = d.load_avg
+        ? d.load_avg.map(v => v.toFixed(2)).join(' / ') : '–';
+
+      // Charts – append latest point
+      const label = new Date(d.timestamp).toLocaleTimeString();
+      function appendPoint(chart, value) {
+        const data   = chart.data.datasets[0].data;
+        const labels = chart.data.labels;
+        data.push(value);
+        labels.push(label);
+        if (data.length > 60) { data.shift(); labels.shift(); }
+        chart.update('none');
+      }
+      appendPoint(charts.cpu,   d.cpu_total?.value  ?? 0);
+      appendPoint(charts.ram,   d.ram?.value         ?? 0);
+      appendPoint(charts.temp,  d.temp_main?.value   ?? 0);
+      appendPoint(charts.disk,  d.root_disk?.value   ?? 0);
+      appendPoint(charts.netrx, (d.net_rx?.value ?? 0) / 1024);
+      appendPoint(charts.nettx, (d.net_tx?.value ?? 0) / 1024);
+
+      // Sensor table
+      buildTable(d);
+
+      // S.M.A.R.T
+      updateSmart(d.smart_health);
+
+      // Critical toast (debounced by unique message)
+      const crits = [];
+      if (d.cpu_total?.value >= 95)  crits.push(`CPU ${d.cpu_total.value.toFixed(1)}%`);
+      if (d.ram?.value       >= 90)  crits.push(`RAM ${d.ram.value.toFixed(1)}%`);
+      if (d.root_disk?.value >= 90)  crits.push(`Disk ${d.root_disk.value.toFixed(1)}%`);
+      if (d.temp_main?.value >= 85)  crits.push(`Temp ${d.temp_main.value.toFixed(1)}°C`);
+      if (crits.length) {
+        const msg = '⚠ Critical: ' + crits.join(', ');
+        if (msg !== lastCritical) { showToast(msg); lastCritical = msg; }
+      } else { lastCritical = ''; }
+
+    } catch(e) { console.error('SSE parse error', e); }
+  };
+
+  es.onerror = () => {
+    updateStatus(false);
+    es.close();
+    setTimeout(connectSSE, Math.min(sseBackoff, 30000));
+    sseBackoff = Math.min(sseBackoff * 2, 30000);
+  };
+}
+
+// ─── Init ────────────────────────────────────────────────────────────────────
+loadHistory().then(connectSSE);
+</script>
+</body>
+</html>
