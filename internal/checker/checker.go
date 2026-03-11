@@ -3,7 +3,9 @@ package checker
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -157,28 +159,16 @@ func (c *Checker) Collect() (*SystemStats, error) {
 		stats.LoadAvg15 = avg.Load15
 	}
 
-	// --- Temperature Sensors (all available sensors) ---
-	temps, err := host.SensorsTemperatures()
-	if err == nil {
-		for _, t := range temps {
-			stats.Temperatures = append(stats.Temperatures, TemperatureSensor{
-				Key:         t.SensorKey,
-				Temperature: t.Temperature,
-				High:        t.High,
-				Critical:    t.Critical,
-			})
-			// Track max CPU temperature for threshold evaluation
-			lk := strings.ToLower(t.SensorKey)
-			if strings.Contains(lk, "cpu") || strings.Contains(lk, "core") || strings.Contains(lk, "coretemp") {
-				if t.Temperature > stats.CPUTempCelsius {
-					stats.CPUTempCelsius = t.Temperature
-				}
+	// --- Temperature, Fan & Voltage Sensors (via 'sensors -j', fallback to sysfs) ---
+	stats.Temperatures, stats.Fans, stats.Voltages = parseSensorsJSON()
+	for _, t := range stats.Temperatures {
+		lk := strings.ToLower(t.Key)
+		if strings.Contains(lk, "cpu") || strings.Contains(lk, "core") || strings.Contains(lk, "package") {
+			if t.Temperature > stats.CPUTempCelsius {
+				stats.CPUTempCelsius = t.Temperature
 			}
 		}
 	}
-
-	// --- Fan Speeds & Voltages from /sys/class/hwmon ---
-	stats.Fans, stats.Voltages = readHwmon()
 
 	// --- Memory ---
 	vmStat, err := mem.VirtualMemory()
@@ -229,6 +219,128 @@ func (c *Checker) Collect() (*SystemStats, error) {
 	}
 
 	return stats, nil
+}
+
+// parseSensorsJSON runs `sensors -j` and parses all temperature, fan, and voltage
+// sensors with human-readable names. Falls back to readHwmon() if sensors is
+// unavailable or produces no usable output.
+func parseSensorsJSON() (temps []TemperatureSensor, fans []FanSensor, voltages []VoltageSensor) {
+	// #nosec G204 – fixed command with no user-controlled arguments.
+	cmd := exec.Command("sensors", "-j")
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = io.Discard
+	_ = cmd.Run() // non-zero exit is acceptable; some chips report N/A
+
+	if out.Len() == 0 {
+		fans, voltages = readHwmon()
+		return
+	}
+
+	// sensors -j may inject bare "ERROR:" lines for unreadable sub-features, which
+	// breaks JSON. Strip them before parsing.
+	var cleaned strings.Builder
+	for _, line := range strings.Split(out.String(), "\n") {
+		if !strings.Contains(line, "ERROR:") {
+			cleaned.WriteString(line)
+			cleaned.WriteByte('\n')
+		}
+	}
+
+	// Outer map: chip-name → raw chip JSON
+	var raw map[string]json.RawMessage
+	if err := json.Unmarshal([]byte(cleaned.String()), &raw); err != nil {
+		fans, voltages = readHwmon()
+		return
+	}
+
+	for chipName, chipRaw := range raw {
+		var chipData map[string]json.RawMessage
+		if err := json.Unmarshal(chipRaw, &chipData); err != nil {
+			continue
+		}
+		prefix := friendlyChipName(chipName)
+
+		for sensorLabel, sensorRaw := range chipData {
+			if sensorLabel == "Adapter" {
+				continue
+			}
+			var readings map[string]json.Number
+			if err := json.Unmarshal(sensorRaw, &readings); err != nil {
+				continue
+			}
+
+			var inputVal, highVal, critVal float64
+			var sensorType string
+			for key, numRaw := range readings {
+				val, err := numRaw.Float64()
+				if err != nil {
+					continue
+				}
+				k := strings.ToLower(key)
+				switch {
+				case strings.HasPrefix(k, "temp") && strings.HasSuffix(k, "_input"):
+					sensorType = "temp"
+					inputVal = val
+				case strings.HasPrefix(k, "temp") && strings.HasSuffix(k, "_max"):
+					highVal = val
+				case strings.HasPrefix(k, "temp") && strings.HasSuffix(k, "_crit"):
+					critVal = val
+				case strings.HasPrefix(k, "fan") && strings.HasSuffix(k, "_input"):
+					sensorType = "fan"
+					inputVal = val
+				case strings.HasPrefix(k, "in") && strings.HasSuffix(k, "_input"):
+					sensorType = "voltage"
+					inputVal = val
+				}
+			}
+
+			fullLabel := prefix + "/" + sensorLabel
+			switch sensorType {
+			case "temp":
+				if inputVal < -50 { // skip bogus readings (e.g., –55 °C = unconnected probe)
+					continue
+				}
+				temps = append(temps, TemperatureSensor{
+					Key:         fullLabel,
+					Temperature: inputVal,
+					High:        highVal,
+					Critical:    critVal,
+				})
+			case "fan":
+				fans = append(fans, FanSensor{Key: fullLabel, RPM: inputVal})
+			case "voltage":
+				voltages = append(voltages, VoltageSensor{Key: fullLabel, Voltage: inputVal})
+			}
+		}
+	}
+
+	// If sensors produced nothing usable, fall back to direct sysfs read.
+	if len(temps) == 0 && len(fans) == 0 && len(voltages) == 0 {
+		fans, voltages = readHwmon()
+	}
+	return
+}
+
+// friendlyChipName converts a sensors chip identifier to a short human-readable prefix.
+func friendlyChipName(chip string) string {
+	switch {
+	case strings.HasPrefix(chip, "coretemp"):
+		return "CPU"
+	case strings.HasPrefix(chip, "nouveau"), strings.HasPrefix(chip, "amdgpu"), strings.HasPrefix(chip, "radeon"):
+		return "GPU"
+	case strings.HasPrefix(chip, "it87"), strings.HasPrefix(chip, "it8792"),
+		strings.HasPrefix(chip, "nct"), strings.HasPrefix(chip, "w836"),
+		strings.HasPrefix(chip, "k10temp"):
+		return "Motherboard"
+	case strings.HasPrefix(chip, "iwlwifi"), strings.HasPrefix(chip, "ath"):
+		return "WiFi"
+	default:
+		if idx := strings.Index(chip, "-"); idx > 0 {
+			return chip[:idx]
+		}
+		return chip
+	}
 }
 
 // readHwmon reads fan speeds and voltages from /sys/class/hwmon.
@@ -322,20 +434,10 @@ func (c *Checker) collectNetworkRate(stats *SystemStats) {
 // string ("PASSED", "FAILED", or "UNKNOWN"). This is a best-effort check; if
 // smartctl is not installed or the device is not supported it returns "UNKNOWN".
 func querySmartHealth(device string) string {
-	// #nosec G204 – device path comes from configuration, not user input.
-	cmd := exec.Command("smartctl", "-H", device)
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &out
-
-	if err := cmd.Run(); err != nil {
-		// Exit code 1 from smartctl is used for SMART test failures; still parse output.
-		if out.Len() == 0 {
-			return "UNKNOWN"
-		}
+	output := runSmartctl(device)
+	if output == "" {
+		return "UNKNOWN"
 	}
-
-	output := out.String()
 	if strings.Contains(output, "PASSED") {
 		return "PASSED"
 	}
@@ -343,6 +445,29 @@ func querySmartHealth(device string) string {
 		return "FAILED"
 	}
 	return "UNKNOWN"
+}
+
+// runSmartctl executes smartctl using common absolute paths first, then PATH.
+func runSmartctl(device string) string {
+	cmds := [][]string{{"/usr/sbin/smartctl", "-H", device}, {"smartctl", "-H", device}}
+	for _, args := range cmds {
+		// #nosec G204 – device path comes from static config, not user input.
+		cmd := exec.Command(args[0], args[1:]...)
+		var out bytes.Buffer
+		cmd.Stdout = &out
+		cmd.Stderr = &out
+		if err := cmd.Run(); err != nil {
+			// smartctl may return non-zero while still printing useful health text.
+			if out.Len() > 0 {
+				return out.String()
+			}
+			continue
+		}
+		if out.Len() > 0 {
+			return out.String()
+		}
+	}
+	return ""
 }
 
 // FormatUptime formats a duration into a human-readable string.

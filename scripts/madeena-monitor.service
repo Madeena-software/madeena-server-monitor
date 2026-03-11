@@ -17,7 +17,11 @@ StandardError=journal
 SyslogIdentifier=madeena-monitor
 
 # Security hardening
-NoNewPrivileges=yes
+# NoNewPrivileges is intentionally omitted so that AmbientCapabilities can
+# be inherited by child processes (smartctl needs CAP_SYS_RAWIO/CAP_SYS_ADMIN
+# for SMART ioctl access; keeping it would silently block those capabilities).
+CapabilityBoundingSet=CAP_SYS_RAWIO CAP_SYS_ADMIN
+AmbientCapabilities=CAP_SYS_RAWIO CAP_SYS_ADMIN
 ProtectSystem=strict
 ProtectHome=yes
 ReadWritePaths=/opt/madeena-monitor

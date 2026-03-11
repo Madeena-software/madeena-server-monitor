@@ -37,8 +37,8 @@ func main() {
 	log.Printf("INFO: server=%s check_interval=%s disk_interval=%s cooldown=%s heartbeat_hour=%d web_port=%d",
 		cfg.ServerName, cfg.CheckInterval, cfg.DiskInterval, cfg.AlertCooldown, cfg.HeartbeatHour, cfg.WebPort)
 
-	// S.M.A.R.T. devices to monitor (configurable via DATA_PARTITIONS; default to common drives)
-	smartDevices := []string{"/dev/sda", "/dev/sdb"}
+	// S.M.A.R.T. devices to monitor: include only existing block devices.
+	smartDevices := detectSmartDevices([]string{"/dev/sda", "/dev/sdb", "/dev/nvme0n1"})
 
 	// Initialise components
 	chk := checker.New(cfg.DataPartitions, smartDevices)
@@ -83,7 +83,6 @@ func main() {
 		case <-diskTicker.C:
 			// Disk checks happen less frequently; we reuse the same collect path
 			// but the alerting logic inside Evaluate handles root/data disks.
-			log.Println("INFO: running scheduled disk check")
 			runCheck(chk, alertMgr, store)
 
 		case sig := <-sigs:
@@ -91,6 +90,17 @@ func main() {
 			return
 		}
 	}
+}
+
+// detectSmartDevices filters candidate device paths to those present on host.
+func detectSmartDevices(candidates []string) []string {
+	out := make([]string, 0, len(candidates))
+	for _, dev := range candidates {
+		if _, err := os.Stat(dev); err == nil {
+			out = append(out, dev)
+		}
+	}
+	return out
 }
 
 // runCheck collects metrics, updates the MetricsStore, and passes stats to the
@@ -101,10 +111,6 @@ func runCheck(chk *checker.Checker, alertMgr *notifier.AlertManager, store *chec
 		log.Printf("ERROR: failed to collect stats: %v", err)
 		return
 	}
-	log.Printf("INFO: collected stats – CPU=%.1f%% RAM=%.1f%% RootDisk=%.1f%% Uptime=%s",
-		stats.CPUUsagePercent, stats.MemPercent, stats.RootDiskPercent,
-		checker.FormatUptime(stats.UptimeDuration))
-
 	store.Update(stats)
 	alertMgr.Evaluate(stats)
 }
