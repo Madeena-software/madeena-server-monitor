@@ -1,103 +1,145 @@
 <!DOCTYPE html>
 <html lang="en" class="dark">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Madeena Server Monitor</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"
-          integrity="sha256-B96atdFP8/FUkM8EoOKgWmgTZSv1qJivHDTM4RJT3JU="
-          crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
   <style>
-    body { background: #0f172a; color: #e2e8f0; font-family: 'Segoe UI', system-ui, sans-serif; }
-    .card { background: #1e293b; border: 1px solid #334155; border-radius: 0.5rem; }
-    .badge-ok    { background:#166534; color:#bbf7d0; }
-    .badge-warn  { background:#854d0e; color:#fef08a; }
-    .badge-crit  { background:#7f1d1d; color:#fecaca; }
-    .badge-na    { background:#374151; color:#9ca3af; }
-    th { background: #1e3a5f; color:#93c5fd; font-size:0.7rem; text-transform:uppercase; letter-spacing:.05em; }
-    tr:nth-child(even) td { background: #1a2740; }
-    tr:hover td { background: #243456 !important; }
-    td { font-size: 0.78rem; }
-    .section-header { background:#0f2544; color:#60a5fa; font-weight:700; font-size:0.75rem; letter-spacing:.08em; text-transform:uppercase; }
-    canvas { max-height: 180px; }
-    .status-dot { display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:5px; }
-    .dot-ok   { background:#22c55e; }
-    .dot-warn { background:#eab308; }
-    .dot-crit { background:#ef4444; animation: pulse 1s infinite; }
+    body { background: #0b1120; color: #f8fafc; font-family: 'Inter', system-ui, sans-serif; }
+    .card { background: #1e293b; border: 1px solid #334155; border-radius: 0.75rem; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
+    
+    /* Badges */
+    .badge-ok    { background: rgba(22, 101, 52, 0.3); color: #4ade80; border: 1px solid rgba(74, 222, 128, 0.2); }
+    .badge-warn  { background: rgba(133, 77, 14, 0.3); color: #facc15; border: 1px solid rgba(250, 204, 21, 0.2); }
+    .badge-crit  { background: rgba(127, 29, 29, 0.3); color: #f87171; border: 1px solid rgba(248, 113, 113, 0.2); }
+    .badge-na    { background: rgba(55, 65, 81, 0.3); color: #9ca3af; border: 1px solid rgba(156, 163, 175, 0.2); }
+    
+    /* Table Styling */
+    th { background: #0f172a; color:#cbd5e1; font-size:0.75rem; text-transform:uppercase; letter-spacing:0.05em; border-bottom: 2px solid #334155; }
+    tr:nth-child(even) td { background: rgba(15, 23, 42, 0.4); }
+    tr:hover td { background: rgba(51, 65, 85, 0.5) !important; transition: background 0.2s; }
+    td { font-size: 0.85rem; border-bottom: 1px solid #334155; }
+    .section-header { background:#1e293b; color:#60a5fa; font-weight:600; font-size:0.8rem; letter-spacing:0.05em; text-transform:uppercase; border-bottom: 1px solid #334155; }
+    
+    /* Status Dots */
+    .status-dot { display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:6px; box-shadow: 0 0 8px currentColor; }
+    .dot-ok   { background:#22c55e; color: #22c55e; }
+    .dot-warn { background:#eab308; color: #eab308; }
+    .dot-crit { background:#ef4444; color: #ef4444; animation: pulse 1s infinite; }
+    
     @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
-    #toast { transition: opacity 0.4s; }
+    #toast { transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); transform: translateY(-20px); }
+    #toast.show { opacity: 1; transform: translateY(0); pointer-events: auto; }
   </style>
 </head>
-<body class="min-h-screen p-4">
+<body class="min-h-screen p-4 md:p-6 lg:p-8">
 
 <!-- Header -->
-<div class="flex items-center justify-between mb-4 card px-4 py-3">
-  <div class="flex items-center gap-3">
-    <svg class="w-7 h-7 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-        d="M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2V9M9 21H5a2 2 0 01-2-2V9m0 0h18"/>
+<div class="flex flex-col md:flex-row items-start md:items-center justify-between mb-6 card px-5 py-4 gap-4">
+  <div class="flex items-center gap-4">
+    <!-- SVG Fix: Added explicit width/height and flex-shrink-0 -->
+    <svg class="text-blue-400 flex-shrink-0" width="32" height="32" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2V9M9 21H5a2 2 0 01-2-2V9m0 0h18"></path>
     </svg>
     <div>
-      <h1 class="text-lg font-bold text-blue-300">Madeena Server Monitor</h1>
-      <p class="text-xs text-slate-400">Live Hardware Dashboard — HWMonitor Style</p>
+      <h1 class="text-xl font-bold text-white tracking-wide">Madeena Server Monitor</h1>
+      <p class="text-xs text-blue-200 mt-0.5 opacity-80">Live Hardware Dashboard — HWMonitor Style</p>
     </div>
   </div>
-  <div class="text-right">
-    <div id="statusBadge" class="inline-flex items-center px-2 py-1 rounded text-xs badge-na">
-      <span class="status-dot dot-warn"></span> Connecting…
+  <div class="text-left md:text-right flex flex-col gap-1">
+    <div>
+      <div id="statusBadge" class="inline-flex items-center px-2.5 py-1 rounded text-xs font-medium badge-na">
+        <span class="status-dot dot-warn"></span> Connecting…
+      </div>
     </div>
-    <div class="text-xs text-slate-400 mt-1">Uptime: <span id="uptime">–</span></div>
-    <div class="text-xs text-slate-400">Load: <span id="loadavg">–</span></div>
+    <div class="text-xs text-slate-400">Uptime: <span id="uptime" class="text-slate-200 font-medium">–</span></div>
+    <div class="text-xs text-slate-400">Load: <span id="loadavg" class="text-slate-200 font-medium">–</span></div>
   </div>
 </div>
 
 <!-- Toast notification -->
-<div id="toast" class="fixed top-4 right-4 z-50 px-4 py-2 rounded text-sm font-medium opacity-0 pointer-events-none max-w-xs"
-     style="background:#7f1d1d; color:#fecaca; border:1px solid #ef4444"></div>
+<div id="toast" class="fixed top-6 right-6 z-50 px-5 py-3 rounded-lg shadow-xl text-sm font-semibold opacity-0 pointer-events-none max-w-sm flex items-center gap-3" style="background:#7f1d1d; color:#fecaca; border:1px solid #ef4444">
+  <svg class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+  <span id="toastMsg"></span>
+</div>
 
 <!-- Charts Grid -->
-<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 mb-4">
-  <div class="card p-3"><p class="text-xs text-slate-400 mb-1">CPU Total Usage (%)</p><canvas id="chartCPU"></canvas></div>
-  <div class="card p-3"><p class="text-xs text-slate-400 mb-1">RAM Usage (%)</p><canvas id="chartRAM"></canvas></div>
-  <div class="card p-3"><p class="text-xs text-slate-400 mb-1">CPU Temperature (°C)</p><canvas id="chartTemp"></canvas></div>
-  <div class="card p-3"><p class="text-xs text-slate-400 mb-1">Root Disk Usage (%)</p><canvas id="chartDisk"></canvas></div>
-  <div class="card p-3"><p class="text-xs text-slate-400 mb-1">Network Rx (KB/s)</p><canvas id="chartNetRx"></canvas></div>
-  <div class="card p-3"><p class="text-xs text-slate-400 mb-1">Network Tx (KB/s)</p><canvas id="chartNetTx"></canvas></div>
+<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5 mb-6">
+  <!-- Chart Cards with explicit relative wrapper for Chart.js -->
+  <div class="card p-4 flex flex-col">
+    <p class="text-xs text-slate-400 mb-3 font-semibold tracking-wider uppercase">CPU Total Usage (%)</p>
+    <div class="relative flex-grow" style="height: 160px; width: 100%;"><canvas id="chartCPU"></canvas></div>
+  </div>
+  <div class="card p-4 flex flex-col">
+    <p class="text-xs text-slate-400 mb-3 font-semibold tracking-wider uppercase">RAM Usage (%)</p>
+    <div class="relative flex-grow" style="height: 160px; width: 100%;"><canvas id="chartRAM"></canvas></div>
+  </div>
+  <div class="card p-4 flex flex-col">
+    <p class="text-xs text-slate-400 mb-3 font-semibold tracking-wider uppercase">CPU Temp (°C)</p>
+    <div class="relative flex-grow" style="height: 160px; width: 100%;"><canvas id="chartTemp"></canvas></div>
+  </div>
+  <div class="card p-4 flex flex-col">
+    <p class="text-xs text-slate-400 mb-3 font-semibold tracking-wider uppercase">Root Disk Usage (%)</p>
+    <div class="relative flex-grow" style="height: 160px; width: 100%;"><canvas id="chartDisk"></canvas></div>
+  </div>
+  <div class="card p-4 flex flex-col">
+    <p class="text-xs text-slate-400 mb-3 font-semibold tracking-wider uppercase">Network Rx (KB/s)</p>
+    <div class="relative flex-grow" style="height: 160px; width: 100%;"><canvas id="chartNetRx"></canvas></div>
+  </div>
+  <div class="card p-4 flex flex-col">
+    <p class="text-xs text-slate-400 mb-3 font-semibold tracking-wider uppercase">Network Tx (KB/s)</p>
+    <div class="relative flex-grow" style="height: 160px; width: 100%;"><canvas id="chartNetTx"></canvas></div>
+  </div>
 </div>
 
-<!-- Sensor Table -->
-<div class="card overflow-hidden">
-  <table class="w-full border-collapse">
-    <thead>
-      <tr>
-        <th class="text-left px-3 py-2 w-1/2">Sensor / Component</th>
-        <th class="text-right px-3 py-2 w-1/6">Value</th>
-        <th class="text-right px-3 py-2 w-1/6">Min</th>
-        <th class="text-right px-3 py-2 w-1/6">Max</th>
-      </tr>
-    </thead>
-    <tbody id="sensorTable">
-      <tr><td colspan="4" class="text-center py-8 text-slate-500">Waiting for data…</td></tr>
-    </tbody>
-  </table>
-</div>
+<!-- Hardware Details -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+  
+  <!-- Left Column: Sensor Table -->
+  <div class="lg:col-span-2 flex flex-col gap-6">
+    <div class="card overflow-hidden">
+      <table class="w-full border-collapse">
+        <thead>
+          <tr>
+            <th class="text-left px-4 py-3 w-1/2">Sensor / Component</th>
+            <th class="text-right px-4 py-3 w-1/6">Value</th>
+            <th class="text-right px-4 py-3 w-1/6">Min</th>
+            <th class="text-right px-4 py-3 w-1/6">Max</th>
+          </tr>
+        </thead>
+        <tbody id="sensorTable">
+          <tr><td colspan="4" class="text-center py-10 text-slate-500">Waiting for hardware data…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
 
-<!-- S.M.A.R.T Health -->
-<div class="card mt-4 p-4">
-  <h2 class="text-xs font-bold text-blue-400 uppercase tracking-widest mb-2">S.M.A.R.T Disk Health</h2>
-  <div id="smartHealth" class="flex flex-wrap gap-2 text-xs">–</div>
+  <!-- Right Column: S.M.A.R.T & Info -->
+  <div class="flex flex-col gap-6">
+    <div class="card p-5">
+      <div class="flex items-center gap-2 mb-4">
+        <svg class="w-5 h-5 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"></path></svg>
+        <h2 class="text-sm font-bold text-slate-200 uppercase tracking-widest">S.M.A.R.T Disk Health</h2>
+      </div>
+      <div id="smartHealth" class="flex flex-col gap-3 text-sm">
+        <span class="text-slate-500 italic">Waiting...</span>
+      </div>
+    </div>
+  </div>
+
 </div>
 
 <script>
 // ─── Chart Helpers ─────────────────────────────────────────────────────────
 const CHART_COLORS = {
-  cpu:    { border:'#60a5fa', bg:'rgba(96,165,250,0.15)' },
-  ram:    { border:'#a78bfa', bg:'rgba(167,139,250,0.15)' },
-  temp:   { border:'#f87171', bg:'rgba(248,113,113,0.15)' },
-  disk:   { border:'#fb923c', bg:'rgba(251,146,60,0.15)'  },
-  netrx:  { border:'#34d399', bg:'rgba(52,211,153,0.15)' },
-  nettx:  { border:'#fbbf24', bg:'rgba(251,191,36,0.15)' },
+  cpu:   { border:'#3b82f6', bg:'rgba(59,130,246,0.1)' },
+  ram:   { border:'#8b5cf6', bg:'rgba(139,92,246,0.1)' },
+  temp:  { border:'#ef4444', bg:'rgba(239,68,68,0.1)' },
+  disk:  { border:'#f97316', bg:'rgba(249,115,22,0.1)'  },
+  netrx: { border:'#10b981', bg:'rgba(16,185,129,0.1)' },
+  nettx: { border:'#f59e0b', bg:'rgba(245,158,11,0.1)' },
 };
 
 function makeChart(id, key) {
@@ -105,14 +147,16 @@ function makeChart(id, key) {
   return new Chart(document.getElementById(id), {
     type: 'line',
     data: { labels: [], datasets: [{ data: [], borderColor: c.border, backgroundColor: c.bg,
-      borderWidth: 2, pointRadius: 0, fill: true, tension: 0.3 }] },
+      borderWidth: 2, pointRadius: 0, fill: true, tension: 0.4 }] },
     options: {
+      responsive: true,
+      maintainAspectRatio: false, // CRITICAL FIX FOR CHART HEIGHT
       animation: false,
-      plugins: { legend: { display: false } },
+      plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false } },
       scales: {
         x: { display: false },
         y: { min: 0, grid: { color:'rgba(255,255,255,0.05)' },
-             ticks: { color:'#94a3b8', font:{size:10} } }
+             ticks: { color:'#64748b', font:{size:11, family:'Inter'} }, border:{display:false} }
       },
       interaction: { mode:'nearest', intersect:false }
     }
@@ -138,21 +182,19 @@ function updateChart(chart, labels, data) {
 let toastTimer = null;
 function showToast(msg) {
   const el = document.getElementById('toast');
-  el.textContent = msg;
-  el.style.opacity = '1';
-  el.style.pointerEvents = 'auto';
+  document.getElementById('toastMsg').textContent = msg;
+  el.classList.add('show');
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => { el.style.opacity = '0'; el.style.pointerEvents = 'none'; }, 8000);
+  toastTimer = setTimeout(() => { el.classList.remove('show'); }, 8000);
 }
 
 // ─── Formatting ─────────────────────────────────────────────────────────────
-const fmtPct  = v => v.toFixed(1) + ' %';
-const fmtTemp = v => v === 0 ? 'N/A' : v.toFixed(1) + ' °C';
-const fmtMHz  = v => v.toFixed(0) + ' MHz';
-const fmtRPM  = v => v.toFixed(0) + ' RPM';
-const fmtV    = v => v.toFixed(3) + ' V';
-const fmtKB   = v => (v / 1024).toFixed(1) + ' KB/s';
-const fmtGB   = v => v.toFixed(1) + ' GB';
+const fmtPct  = v => (v || 0).toFixed(1) + ' %';
+const fmtTemp = v => (!v || v === 0) ? 'N/A' : v.toFixed(1) + ' °C';
+const fmtMHz  = v => (v || 0).toFixed(0) + ' MHz';
+const fmtRPM  = v => (v || 0).toFixed(0) + ' RPM';
+const fmtV    = v => (v || 0).toFixed(3) + ' V';
+const fmtKB   = v => ((v || 0) / 1024).toFixed(1) + ' KB/s';
 
 function pctClass(v, warn=70, crit=90) {
   if (v >= crit) return 'badge-crit';
@@ -162,21 +204,21 @@ function pctClass(v, warn=70, crit=90) {
 function tempClass(v) {
   if (v >= 85) return 'badge-crit';
   if (v >= 70) return 'badge-warn';
-  if (v === 0) return 'badge-na';
+  if (!v || v === 0) return 'badge-na';
   return 'badge-ok';
 }
 
 // ─── Table Builder ──────────────────────────────────────────────────────────
 function sectionRow(label) {
-  return `<tr><td colspan="4" class="section-header px-3 py-1">▸ ${label}</td></tr>`;
+  return `<tr><td colspan="4" class="section-header px-4 py-2">▸ ${label}</td></tr>`;
 }
 
 function sensorRow(name, value, min, max, cls='') {
   return `<tr>
-    <td class="px-3 py-1.5 text-slate-300">${name}</td>
-    <td class="px-3 py-1.5 text-right"><span class="px-1.5 py-0.5 rounded text-xs ${cls}">${value}</span></td>
-    <td class="px-3 py-1.5 text-right text-slate-400">${min}</td>
-    <td class="px-3 py-1.5 text-right text-slate-400">${max}</td>
+    <td class="px-4 py-2 text-slate-300 font-medium">${name}</td>
+    <td class="px-4 py-2 text-right"><span class="px-2 py-0.5 rounded text-xs font-semibold tracking-wide ${cls}">${value}</span></td>
+    <td class="px-4 py-2 text-right text-slate-400 font-mono text-xs">${min}</td>
+    <td class="px-4 py-2 text-right text-slate-400 font-mono text-xs">${max}</td>
   </tr>`;
 }
 
@@ -186,87 +228,77 @@ function buildTable(d) {
   // ── Voltages ──
   if (d.voltages && d.voltages.length) {
     rows += sectionRow('Voltages');
-    d.voltages.forEach(s => {
-      rows += sensorRow(s.name, fmtV(s.value), fmtV(s.min), fmtV(s.max));
-    });
+    d.voltages.forEach(s => rows += sensorRow(s.name, fmtV(s.value), fmtV(s.min), fmtV(s.max)));
   }
 
   // ── Temperatures ──
   rows += sectionRow('Temperatures');
   if (d.temperatures && d.temperatures.length) {
-    d.temperatures.forEach(s => {
-      rows += sensorRow(s.name, fmtTemp(s.value), fmtTemp(s.min), fmtTemp(s.max), tempClass(s.value));
-    });
-  } else {
-    // Fallback: show aggregate CPU temp
-    rows += sensorRow('CPU Temp (max)', fmtTemp(d.temp_main.value),
-                       fmtTemp(d.temp_main.min), fmtTemp(d.temp_main.max), tempClass(d.temp_main.value));
+    d.temperatures.forEach(s => rows += sensorRow(s.name, fmtTemp(s.value), fmtTemp(s.min), fmtTemp(s.max), tempClass(s.value)));
+  } else if (d.temp_main) {
+    rows += sensorRow('CPU Temp (Main)', fmtTemp(d.temp_main.value), fmtTemp(d.temp_main.min), fmtTemp(d.temp_main.max), tempClass(d.temp_main.value));
   }
 
   // ── Fans ──
   if (d.fans && d.fans.length) {
     rows += sectionRow('Fans');
-    d.fans.forEach(s => {
-      rows += sensorRow(s.name, fmtRPM(s.value), fmtRPM(s.min), fmtRPM(s.max));
-    });
+    d.fans.forEach(s => rows += sensorRow(s.name, fmtRPM(s.value), fmtRPM(s.min), fmtRPM(s.max)));
   }
 
   // ── Utilization ──
   rows += sectionRow('Utilization');
-  rows += sensorRow('CPU Total', fmtPct(d.cpu_total.value), fmtPct(d.cpu_total.min), fmtPct(d.cpu_total.max), pctClass(d.cpu_total.value));
-  rows += sensorRow('RAM', fmtPct(d.ram.value), fmtPct(d.ram.min), fmtPct(d.ram.max), pctClass(d.ram.value));
+  if (d.cpu_total) rows += sensorRow('CPU Total', fmtPct(d.cpu_total.value), fmtPct(d.cpu_total.min), fmtPct(d.cpu_total.max), pctClass(d.cpu_total.value));
+  if (d.ram) rows += sensorRow('RAM', fmtPct(d.ram.value), fmtPct(d.ram.min), fmtPct(d.ram.max), pctClass(d.ram.value));
   if (d.cpu_cores && d.cpu_cores.length) {
-    d.cpu_cores.forEach(s => {
-      rows += sensorRow(s.name, fmtPct(s.value), fmtPct(s.min), fmtPct(s.max), pctClass(s.value));
-    });
+    d.cpu_cores.forEach(s => rows += sensorRow(s.name, fmtPct(s.value), fmtPct(s.min), fmtPct(s.max), pctClass(s.value)));
   }
 
   // ── Clock Speeds ──
   if (d.cpu_clocks_mhz && d.cpu_clocks_mhz.length) {
     rows += sectionRow('Clock Speeds');
-    d.cpu_clocks_mhz.forEach(s => {
-      rows += sensorRow(s.name, fmtMHz(s.value), fmtMHz(s.min), fmtMHz(s.max));
-    });
+    d.cpu_clocks_mhz.forEach(s => rows += sensorRow(s.name, fmtMHz(s.value), fmtMHz(s.min), fmtMHz(s.max)));
   }
 
   // ── Space / Disk ──
   rows += sectionRow('Space / Disk');
-  rows += sensorRow('Root Disk /', fmtPct(d.root_disk.value), fmtPct(d.root_disk.min), fmtPct(d.root_disk.max), pctClass(d.root_disk.value));
+  if (d.root_disk) rows += sensorRow('Root Disk /', fmtPct(d.root_disk.value), fmtPct(d.root_disk.min), fmtPct(d.root_disk.max), pctClass(d.root_disk.value));
   if (d.data_disks && d.data_disks.length) {
-    d.data_disks.forEach(s => {
-      rows += sensorRow(s.name, fmtPct(s.value), fmtPct(s.min), fmtPct(s.max), pctClass(s.value));
-    });
+    d.data_disks.forEach(s => rows += sensorRow(s.name, fmtPct(s.value), fmtPct(s.min), fmtPct(s.max), pctClass(s.value)));
   }
 
   // ── Network ──
   rows += sectionRow('Network');
-  rows += sensorRow('Rx Rate', fmtKB(d.net_rx.value), fmtKB(d.net_rx.min), fmtKB(d.net_rx.max));
-  rows += sensorRow('Tx Rate', fmtKB(d.net_tx.value), fmtKB(d.net_tx.min), fmtKB(d.net_tx.max));
+  if (d.net_rx) rows += sensorRow('Rx Rate', fmtKB(d.net_rx.value), fmtKB(d.net_rx.min), fmtKB(d.net_rx.max));
+  if (d.net_tx) rows += sensorRow('Tx Rate', fmtKB(d.net_tx.value), fmtKB(d.net_tx.min), fmtKB(d.net_tx.max));
 
-  document.getElementById('sensorTable').innerHTML = rows;
+  document.getElementById('sensorTable').innerHTML = rows || '<tr><td colspan="4" class="text-center py-6 text-slate-500">No data available</td></tr>';
 }
 
 // ─── Status badge ────────────────────────────────────────────────────────────
 function updateStatus(connected) {
   const el = document.getElementById('statusBadge');
   if (connected) {
-    el.className = 'inline-flex items-center px-2 py-1 rounded text-xs badge-ok';
+    el.className = 'inline-flex items-center px-2.5 py-1 rounded text-xs font-medium badge-ok';
     el.innerHTML = '<span class="status-dot dot-ok"></span> Live';
   } else {
-    el.className = 'inline-flex items-center px-2 py-1 rounded text-xs badge-warn';
+    el.className = 'inline-flex items-center px-2.5 py-1 rounded text-xs font-medium badge-warn';
     el.innerHTML = '<span class="status-dot dot-warn"></span> Reconnecting…';
   }
 }
 
 // ─── S.M.A.R.T ───────────────────────────────────────────────────────────────
 function updateSmart(health) {
-  if (!health) { document.getElementById('smartHealth').innerHTML = '–'; return; }
   const el = document.getElementById('smartHealth');
+  if (!health) { el.innerHTML = '<span class="text-slate-500 italic">No S.M.A.R.T data</span>'; return; }
   const entries = Object.entries(health);
-  if (!entries.length) { el.innerHTML = '<span class="text-slate-500">No devices</span>'; return; }
+  if (!entries.length) { el.innerHTML = '<span class="text-slate-500 italic">No devices found</span>'; return; }
+  
   el.innerHTML = entries.map(([dev, s]) => {
-    const cls = s === 'PASSED' ? 'badge-ok' : s === 'FAILED' ? 'badge-crit' : 'badge-na';
-    return `<span class="px-2 py-1 rounded ${cls}">${dev}: ${s}</span>`;
+    const cls = s === 'PASSED' ? 'badge-ok text-green-400' : s === 'FAILED' ? 'badge-crit text-red-400' : 'badge-na text-slate-300';
+    return `<div class="flex justify-between items-center p-2 rounded bg-slate-800 border border-slate-700">
+              <span class="font-mono text-slate-300">${dev}</span>
+              <span class="px-2 py-0.5 rounded text-xs font-bold ${cls}">${s}</span>
+            </div>`;
   }).join('');
 }
 
@@ -274,19 +306,22 @@ function updateSmart(health) {
 async function loadHistory() {
   try {
     const r = await fetch('/api/metrics/history');
+    if (!r.ok) return;
     const h = await r.json();
-    updateChart(charts.cpu,   h.labels, h.cpu_total);
-    updateChart(charts.ram,   h.labels, h.ram);
-    updateChart(charts.temp,  h.labels, h.temp_main);
-    updateChart(charts.disk,  h.labels, h.root_disk);
-    updateChart(charts.netrx, h.labels, h.net_rx.map(v => v / 1024));
-    updateChart(charts.nettx, h.labels, h.net_tx.map(v => v / 1024));
+    if(h.labels) {
+      if(h.cpu_total) updateChart(charts.cpu,   h.labels, h.cpu_total);
+      if(h.ram)       updateChart(charts.ram,   h.labels, h.ram);
+      if(h.temp_main) updateChart(charts.temp,  h.labels, h.temp_main);
+      if(h.root_disk) updateChart(charts.disk,  h.labels, h.root_disk);
+      if(h.net_rx)    updateChart(charts.netrx, h.labels, h.net_rx.map(v => v / 1024));
+      if(h.net_tx)    updateChart(charts.nettx, h.labels, h.net_tx.map(v => v / 1024));
+    }
   } catch(e) { console.warn('history load failed', e); }
 }
 
 // ─── SSE ─────────────────────────────────────────────────────────────────────
 let lastCritical = '';
-let sseBackoff = 1000; // ms, doubles on each failure up to 30s
+let sseBackoff = 1000;
 function connectSSE() {
   const es = new EventSource('/api/metrics/live');
 
@@ -296,42 +331,36 @@ function connectSSE() {
     try {
       const d = JSON.parse(ev.data);
 
-      // Header info
       document.getElementById('uptime').textContent  = d.uptime || '–';
-      document.getElementById('loadavg').textContent = d.load_avg
-        ? d.load_avg.map(v => v.toFixed(2)).join(' / ') : '–';
+      document.getElementById('loadavg').textContent = d.load_avg ? d.load_avg.map(v => v.toFixed(2)).join(' / ') : '–';
 
-      // Charts – append latest point
-      const label = new Date(d.timestamp).toLocaleTimeString();
+      const label = new Date(d.timestamp || Date.now()).toLocaleTimeString();
       function appendPoint(chart, value) {
         const data   = chart.data.datasets[0].data;
         const labels = chart.data.labels;
-        data.push(value);
-        labels.push(label);
+        data.push(value); labels.push(label);
         if (data.length > 60) { data.shift(); labels.shift(); }
         chart.update('none');
       }
+      
       appendPoint(charts.cpu,   d.cpu_total?.value  ?? 0);
-      appendPoint(charts.ram,   d.ram?.value         ?? 0);
-      appendPoint(charts.temp,  d.temp_main?.value   ?? 0);
-      appendPoint(charts.disk,  d.root_disk?.value   ?? 0);
+      appendPoint(charts.ram,   d.ram?.value        ?? 0);
+      appendPoint(charts.temp,  d.temp_main?.value  ?? 0);
+      appendPoint(charts.disk,  d.root_disk?.value  ?? 0);
       appendPoint(charts.netrx, (d.net_rx?.value ?? 0) / 1024);
       appendPoint(charts.nettx, (d.net_tx?.value ?? 0) / 1024);
 
-      // Sensor table
       buildTable(d);
-
-      // S.M.A.R.T
       updateSmart(d.smart_health);
 
-      // Critical toast (debounced by unique message)
       const crits = [];
       if (d.cpu_total?.value >= 95)  crits.push(`CPU ${d.cpu_total.value.toFixed(1)}%`);
       if (d.ram?.value       >= 90)  crits.push(`RAM ${d.ram.value.toFixed(1)}%`);
       if (d.root_disk?.value >= 90)  crits.push(`Disk ${d.root_disk.value.toFixed(1)}%`);
       if (d.temp_main?.value >= 85)  crits.push(`Temp ${d.temp_main.value.toFixed(1)}°C`);
+      
       if (crits.length) {
-        const msg = '⚠ Critical: ' + crits.join(', ');
+        const msg = 'Critical Alert: ' + crits.join(', ');
         if (msg !== lastCritical) { showToast(msg); lastCritical = msg; }
       } else { lastCritical = ''; }
 
