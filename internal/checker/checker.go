@@ -4,7 +4,10 @@ package checker
 import (
 	"bytes"
 	"fmt"
+	"os"
 	"os/exec"
+	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -16,20 +19,53 @@ import (
 	"github.com/shirou/gopsutil/v3/net"
 )
 
+// TemperatureSensor represents a single hardware temperature reading.
+type TemperatureSensor struct {
+	Key         string
+	Temperature float64
+	High        float64
+	Critical    float64
+}
+
+// FanSensor represents a single hardware fan speed reading.
+type FanSensor struct {
+	Key string
+	RPM float64
+}
+
+// VoltageSensor represents a single voltage reading.
+type VoltageSensor struct {
+	Key     string
+	Voltage float64
+}
+
 // SystemStats holds a complete snapshot of all monitored metrics.
 type SystemStats struct {
-	// CPU
+	// CPU – aggregate
 	CPUUsagePercent float64
 	LoadAvg1        float64
 	LoadAvg5        float64
 	LoadAvg15       float64
-	CPUTempCelsius  float64 // 0 if unavailable
+	CPUTempCelsius  float64 // max CPU temp, 0 if unavailable
+
+	// CPU – per-core detail
+	CPUCorePercents []float64 // per-core usage percentages (from cpu.Percent with percpu=true)
+	CPUCoreMHz      []float64 // per-core clock speed in MHz (from cpu.Info)
+
+	// All temperature sensors reported by the host
+	Temperatures []TemperatureSensor
+
+	// Fan speeds from /sys/class/hwmon
+	Fans []FanSensor
+
+	// Voltages from /sys/class/hwmon (in Volts)
+	Voltages []VoltageSensor
 
 	// Memory
-	MemTotalMB  uint64
-	MemUsedMB   uint64
-	MemFreeMB   uint64
-	MemPercent  float64
+	MemTotalMB uint64
+	MemUsedMB  uint64
+	MemFreeMB  uint64
+	MemPercent float64
 
 	// Disk – root partition
 	RootDiskTotalGB float64
@@ -43,7 +79,7 @@ type SystemStats struct {
 	// Disk health (S.M.A.R.T.)
 	SmartHealth map[string]string // device → "PASSED" / "FAILED" / "UNKNOWN"
 
-	// Network (bytes since last check)
+	// Network (bytes/sec since last check)
 	NetRxBytesPerSec float64
 	NetTxBytesPerSec float64
 
@@ -56,9 +92,9 @@ type SystemStats struct {
 
 // DiskUsage holds usage stats for a single partition.
 type DiskUsage struct {
-	TotalGB   float64
-	UsedGB    float64
-	FreeGB    float64
+	TotalGB     float64
+	UsedGB      float64
+	FreeGB      float64
 	UsedPercent float64
 }
 
@@ -93,10 +129,24 @@ func (c *Checker) Collect() (*SystemStats, error) {
 		SmartHealth: make(map[string]string),
 	}
 
-	// --- CPU Usage ---
+	// --- CPU Usage (aggregate) ---
 	percents, err := cpu.Percent(500*time.Millisecond, false)
 	if err == nil && len(percents) > 0 {
 		stats.CPUUsagePercent = percents[0]
+	}
+
+	// --- CPU Usage per-core ---
+	corePercents, err := cpu.Percent(0, true)
+	if err == nil {
+		stats.CPUCorePercents = corePercents
+	}
+
+	// --- CPU Clock Speeds per-core (from cpu.Info) ---
+	infos, err := cpu.Info()
+	if err == nil {
+		for _, info := range infos {
+			stats.CPUCoreMHz = append(stats.CPUCoreMHz, info.Mhz)
+		}
 	}
 
 	// --- Load Average ---
@@ -107,20 +157,28 @@ func (c *Checker) Collect() (*SystemStats, error) {
 		stats.LoadAvg15 = avg.Load15
 	}
 
-	// --- CPU Temperature (best-effort via host sensors) ---
+	// --- Temperature Sensors (all available sensors) ---
 	temps, err := host.SensorsTemperatures()
 	if err == nil {
 		for _, t := range temps {
-			// Look for a CPU core temperature sensor
-			if strings.Contains(strings.ToLower(t.SensorKey), "cpu") ||
-				strings.Contains(strings.ToLower(t.SensorKey), "core") ||
-				strings.Contains(strings.ToLower(t.SensorKey), "coretemp") {
+			stats.Temperatures = append(stats.Temperatures, TemperatureSensor{
+				Key:         t.SensorKey,
+				Temperature: t.Temperature,
+				High:        t.High,
+				Critical:    t.Critical,
+			})
+			// Track max CPU temperature for threshold evaluation
+			lk := strings.ToLower(t.SensorKey)
+			if strings.Contains(lk, "cpu") || strings.Contains(lk, "core") || strings.Contains(lk, "coretemp") {
 				if t.Temperature > stats.CPUTempCelsius {
 					stats.CPUTempCelsius = t.Temperature
 				}
 			}
 		}
 	}
+
+	// --- Fan Speeds & Voltages from /sys/class/hwmon ---
+	stats.Fans, stats.Voltages = readHwmon()
 
 	// --- Memory ---
 	vmStat, err := mem.VirtualMemory()
@@ -171,6 +229,70 @@ func (c *Checker) Collect() (*SystemStats, error) {
 	}
 
 	return stats, nil
+}
+
+// readHwmon reads fan speeds and voltages from /sys/class/hwmon.
+// Returns nil slices when the directory is unavailable (non-Linux hosts).
+func readHwmon() (fans []FanSensor, voltages []VoltageSensor) {
+	hwmonDirs, err := filepath.Glob("/sys/class/hwmon/hwmon*")
+	if err != nil || len(hwmonDirs) == 0 {
+		return
+	}
+	for _, dir := range hwmonDirs {
+		name := readSysString(filepath.Join(dir, "name"))
+		if name == "" {
+			name = filepath.Base(dir)
+		}
+
+		// Fan speeds: fan*_input (values in RPM)
+		fanFiles, _ := filepath.Glob(filepath.Join(dir, "fan*_input"))
+		for _, f := range fanFiles {
+			rpm, err := readSysFloat(f)
+			if err != nil {
+				continue
+			}
+			base := strings.TrimSuffix(f, "_input")
+			label := readSysString(base + "_label")
+			if label == "" {
+				label = name + " " + filepath.Base(base)
+			}
+			fans = append(fans, FanSensor{Key: label, RPM: rpm})
+		}
+
+		// Voltages: in*_input (values in mV; convert to V)
+		voltFiles, _ := filepath.Glob(filepath.Join(dir, "in*_input"))
+		for _, f := range voltFiles {
+			mv, err := readSysFloat(f)
+			if err != nil {
+				continue
+			}
+			base := strings.TrimSuffix(f, "_input")
+			label := readSysString(base + "_label")
+			if label == "" {
+				label = name + " " + filepath.Base(base)
+			}
+			voltages = append(voltages, VoltageSensor{Key: label, Voltage: mv / 1000.0})
+		}
+	}
+	return
+}
+
+// readSysFloat reads a sysfs file and parses its content as float64.
+func readSysFloat(path string) (float64, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return 0, err
+	}
+	return strconv.ParseFloat(strings.TrimSpace(string(data)), 64)
+}
+
+// readSysString reads a sysfs file and returns its trimmed string content.
+func readSysString(path string) string {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(string(data))
 }
 
 // collectNetworkRate computes bytes/sec for all interfaces combined since the

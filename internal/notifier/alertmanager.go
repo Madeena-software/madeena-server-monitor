@@ -38,6 +38,8 @@ func NewAlertManager(emailer *Emailer, cfg *config.Config) *AlertManager {
 
 // Evaluate inspects the provided stats and sends alert emails for any
 // threshold violations, respecting the configured cooldown period.
+// It also performs a cumulative OR-logic check: if ANY critical metric
+// exceeds its threshold (Temp, CPU, RAM, or Disk) a combined alert is sent.
 func (am *AlertManager) Evaluate(stats *checker.SystemStats) {
 	// --- CPU ---
 	if stats.CPUUsagePercent >= am.cfg.CPUThreshold {
@@ -121,6 +123,11 @@ func (am *AlertManager) Evaluate(stats *checker.SystemStats) {
 			}
 		}
 	}
+
+	// --- Cumulative OR-logic anomaly alert ---
+	// Fires when ANY of the critical thresholds is breached, regardless of
+	// individual per-metric cooldowns, so operators get a holistic summary.
+	am.evaluateCumulative(stats)
 }
 
 // shouldAlert returns true if enough time has elapsed since the last alert for
@@ -145,6 +152,65 @@ func (am *AlertManager) sendAlert(key, subject, body string) {
 	am.lastAlertTime[key] = time.Now()
 	am.mu.Unlock()
 	log.Printf("INFO: alert sent for key=%s subject=%q", key, subject)
+}
+
+// evaluateCumulative performs an OR-logic check across all critical metrics.
+// If any single metric (temperature, CPU, RAM, or disk) breaches its threshold,
+// a combined summary alert email is sent (subject to its own cooldown key).
+func (am *AlertManager) evaluateCumulative(stats *checker.SystemStats) {
+	var triggers []string
+
+	if am.cfg.TempThreshold > 0 && stats.CPUTempCelsius >= am.cfg.TempThreshold {
+		triggers = append(triggers, fmt.Sprintf("Suhu CPU=%.1f°C (threshold %.1f°C)",
+			stats.CPUTempCelsius, am.cfg.TempThreshold))
+	}
+	if stats.CPUUsagePercent >= am.cfg.CPUThreshold {
+		triggers = append(triggers, fmt.Sprintf("CPU Usage=%.1f%% (threshold %.1f%%)",
+			stats.CPUUsagePercent, am.cfg.CPUThreshold))
+	}
+	if stats.MemPercent >= am.cfg.RAMThreshold {
+		triggers = append(triggers, fmt.Sprintf("RAM Usage=%.1f%% (threshold %.1f%%)",
+			stats.MemPercent, am.cfg.RAMThreshold))
+	}
+	if stats.RootDiskPercent >= am.cfg.RootDiskThreshold {
+		triggers = append(triggers, fmt.Sprintf("Disk /=%.1f%% (threshold %.1f%%)",
+			stats.RootDiskPercent, am.cfg.RootDiskThreshold))
+	}
+	for mount, du := range stats.DataDisks {
+		if du.UsedPercent >= am.cfg.RootDiskThreshold {
+			triggers = append(triggers, fmt.Sprintf("Disk %s=%.1f%% (threshold %.1f%%)",
+				mount, du.UsedPercent, am.cfg.RootDiskThreshold))
+		}
+	}
+
+	if len(triggers) == 0 {
+		return
+	}
+
+	if !am.shouldAlert("cumulative") {
+		return
+	}
+
+	subject := fmt.Sprintf("[PERINGATAN KRITIS][%s] Anomali Sistem Terdeteksi", am.cfg.ServerName)
+	body := fmt.Sprintf(
+		"Peringatan Kritis Server – satu atau lebih metrik melebihi batas kritis.\n\n"+
+			"Sensor yang memicu peringatan:\n",
+	)
+	for _, t := range triggers {
+		body += "  • " + t + "\n"
+	}
+	body += fmt.Sprintf(
+		"\nSnapshot saat ini:\n"+
+			"  CPU  : %.1f%% | Load: %.2f / %.2f / %.2f\n"+
+			"  RAM  : %.1f%% (%d MB used / %d MB total)\n"+
+			"  Disk : %.1f%% (/ partition)\n"+
+			"  Temp : %.1f°C\n",
+		stats.CPUUsagePercent, stats.LoadAvg1, stats.LoadAvg5, stats.LoadAvg15,
+		stats.MemPercent, stats.MemUsedMB, stats.MemTotalMB,
+		stats.RootDiskPercent,
+		stats.CPUTempCelsius,
+	)
+	am.sendAlert("cumulative", subject, body)
 }
 
 // SendHeartbeat sends the daily summary heartbeat email.

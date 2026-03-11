@@ -1,9 +1,11 @@
 // Command monitor is the main entry point for the madeena-server-monitor daemon.
 // It periodically collects system metrics, evaluates alert conditions, and sends
 // email notifications when thresholds are exceeded or the daily heartbeat fires.
+// It also serves a live web dashboard on the configured WEB_PORT.
 package main
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"os/signal"
@@ -12,6 +14,7 @@ import (
 
 	"github.com/Madeena-software/madeena-server-monitor/internal/checker"
 	"github.com/Madeena-software/madeena-server-monitor/internal/config"
+	"github.com/Madeena-software/madeena-server-monitor/internal/dashboard"
 	"github.com/Madeena-software/madeena-server-monitor/internal/notifier"
 )
 
@@ -31,8 +34,8 @@ func main() {
 		log.Fatal("FATAL: SMTP_USER and SMTP_PASS must be set")
 	}
 
-	log.Printf("INFO: server=%s check_interval=%s disk_interval=%s cooldown=%s heartbeat_hour=%d",
-		cfg.ServerName, cfg.CheckInterval, cfg.DiskInterval, cfg.AlertCooldown, cfg.HeartbeatHour)
+	log.Printf("INFO: server=%s check_interval=%s disk_interval=%s cooldown=%s heartbeat_hour=%d web_port=%d",
+		cfg.ServerName, cfg.CheckInterval, cfg.DiskInterval, cfg.AlertCooldown, cfg.HeartbeatHour, cfg.WebPort)
 
 	// S.M.A.R.T. devices to monitor (configurable via DATA_PARTITIONS; default to common drives)
 	smartDevices := []string{"/dev/sda", "/dev/sdb"}
@@ -41,6 +44,16 @@ func main() {
 	chk := checker.New(cfg.DataPartitions, smartDevices)
 	emailer := notifier.NewEmailer(cfg)
 	alertMgr := notifier.NewAlertManager(emailer, cfg)
+	store := checker.NewMetricsStore()
+
+	// Start live web dashboard in a background goroutine
+	dash := dashboard.New(store, cfg.CheckInterval)
+	go func() {
+		addr := fmt.Sprintf(":%d", cfg.WebPort)
+		if err := dash.ListenAndServe(addr); err != nil {
+			log.Printf("ERROR: dashboard server stopped: %v", err)
+		}
+	}()
 
 	// Tickers
 	checkTicker := time.NewTicker(cfg.CheckInterval)
@@ -53,7 +66,7 @@ func main() {
 	lastHeartbeatDay := -1
 
 	// Run a collection immediately on startup so the first heartbeat has data.
-	runCheck(chk, alertMgr)
+	runCheck(chk, alertMgr, store)
 
 	// Signal handling for graceful shutdown
 	sigs := make(chan os.Signal, 1)
@@ -64,14 +77,14 @@ func main() {
 	for {
 		select {
 		case <-checkTicker.C:
-			runCheck(chk, alertMgr)
+			runCheck(chk, alertMgr, store)
 			maybeHeartbeat(chk, alertMgr, cfg.HeartbeatHour, &lastHeartbeatDay)
 
 		case <-diskTicker.C:
 			// Disk checks happen less frequently; we reuse the same collect path
 			// but the alerting logic inside Evaluate handles root/data disks.
 			log.Println("INFO: running scheduled disk check")
-			runCheck(chk, alertMgr)
+			runCheck(chk, alertMgr, store)
 
 		case sig := <-sigs:
 			log.Printf("INFO: received signal %s – shutting down", sig)
@@ -80,8 +93,9 @@ func main() {
 	}
 }
 
-// runCheck collects metrics and passes them to the alert manager for evaluation.
-func runCheck(chk *checker.Checker, alertMgr *notifier.AlertManager) {
+// runCheck collects metrics, updates the MetricsStore, and passes stats to the
+// alert manager for evaluation.
+func runCheck(chk *checker.Checker, alertMgr *notifier.AlertManager, store *checker.MetricsStore) {
 	stats, err := chk.Collect()
 	if err != nil {
 		log.Printf("ERROR: failed to collect stats: %v", err)
@@ -91,6 +105,7 @@ func runCheck(chk *checker.Checker, alertMgr *notifier.AlertManager) {
 		stats.CPUUsagePercent, stats.MemPercent, stats.RootDiskPercent,
 		checker.FormatUptime(stats.UptimeDuration))
 
+	store.Update(stats)
 	alertMgr.Evaluate(stats)
 }
 

@@ -32,6 +32,9 @@ type Config struct {
 	// Number of consecutive high-CPU checks before alerting
 	CPUConsecutiveChecks int
 
+	// Temperature threshold in Celsius for the cumulative OR-logic alert
+	TempThreshold float64
+
 	// Alerting intervals
 	CheckInterval    time.Duration // how often to check CPU/RAM
 	DiskInterval     time.Duration // how often to check disk
@@ -43,6 +46,9 @@ type Config struct {
 
 	// Server name for email identification
 	ServerName string
+
+	// TCP port for the live web dashboard
+	WebPort int
 }
 
 // Load reads configuration from environment variables.
@@ -84,6 +90,9 @@ func Load() (*Config, error) {
 	// Consecutive CPU checks
 	cfg.CPUConsecutiveChecks = parseInt(getEnv("CPU_CONSECUTIVE_CHECKS", "3"))
 
+	// Temperature threshold for cumulative OR-logic alert
+	cfg.TempThreshold = parseFloat(getEnv("TEMP_THRESHOLD", "85"))
+
 	// Intervals
 	cfg.CheckInterval = parseDuration(getEnv("CHECK_INTERVAL", "1m"))
 	cfg.DiskInterval = parseDuration(getEnv("DISK_INTERVAL", "15m"))
@@ -107,6 +116,13 @@ func Load() (*Config, error) {
 	}
 
 	cfg.ServerName = getEnv("SERVER_NAME", "madeena-server")
+
+	// Web dashboard port
+	webPort, err := strconv.Atoi(getEnv("WEB_PORT", "8080"))
+	if err != nil {
+		return nil, fmt.Errorf("invalid WEB_PORT: %w", err)
+	}
+	cfg.WebPort = webPort
 
 	return cfg, nil
 }
