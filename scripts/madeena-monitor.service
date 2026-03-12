@@ -7,9 +7,9 @@ After=network.target
 Type=simple
 User=madeena-monitor
 Group=madeena-monitor
-WorkingDirectory=/opt/madeena-monitor
-EnvironmentFile=/opt/madeena-monitor/.env
-ExecStart=/opt/madeena-monitor/monitor
+WorkingDirectory=/var/www/madeena-server-monitor
+EnvironmentFile=/var/www/madeena-server-monitor/.env
+ExecStart=/var/www/madeena-server-monitor/monitor
 Restart=on-failure
 RestartSec=10s
 StandardOutput=journal
@@ -24,7 +24,7 @@ CapabilityBoundingSet=CAP_SYS_RAWIO CAP_SYS_ADMIN
 AmbientCapabilities=CAP_SYS_RAWIO CAP_SYS_ADMIN
 ProtectSystem=strict
 ProtectHome=yes
-ReadWritePaths=/opt/madeena-monitor
+ReadWritePaths=/var/www/madeena-server-monitor
 
 [Install]
 WantedBy=multi-user.target
