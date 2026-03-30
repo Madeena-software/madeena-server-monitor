@@ -36,10 +36,10 @@ type Config struct {
 	TempThreshold float64
 
 	// Alerting intervals
-	CheckInterval    time.Duration // how often to check CPU/RAM
-	DiskInterval     time.Duration // how often to check disk
-	AlertCooldown    time.Duration // minimum time between repeated alerts
-	HeartbeatHour    int           // hour of day (0–23) for daily heartbeat email
+	CheckInterval time.Duration // how often to check CPU/RAM
+	DiskInterval  time.Duration // how often to check disk
+	AlertCooldown time.Duration // minimum time between repeated alerts
+	HeartbeatHour int           // hour of day (0–23) for daily heartbeat email
 
 	// Extra disk mount points to monitor beyond root
 	DataPartitions []string
@@ -49,6 +49,12 @@ type Config struct {
 
 	// TCP port for the live web dashboard
 	WebPort int
+
+	// Systemd services to manage via dashboard
+	ManagedServices []string
+
+	// Fail2Ban jails to monitor via dashboard
+	Fail2BanJails []string
 }
 
 // Load reads configuration from environment variables.
@@ -123,6 +129,34 @@ func Load() (*Config, error) {
 		return nil, fmt.Errorf("invalid WEB_PORT: %w", err)
 	}
 	cfg.WebPort = webPort
+
+	// Managed services (comma-separated)
+	servStr := getEnv("MANAGED_SERVICES", "sshd,nginx")
+	if servStr != "" {
+		for _, s := range strings.Split(servStr, ",") {
+			s = strings.TrimSpace(s)
+			if s != "" {
+				cfg.ManagedServices = append(cfg.ManagedServices, s)
+			}
+		}
+	}
+	if len(cfg.ManagedServices) == 0 {
+		cfg.ManagedServices = []string{"sshd", "nginx"}
+	}
+
+	// Fail2Ban jails (comma-separated)
+	jailStr := getEnv("FAIL2BAN_JAILS", "sshd,recidive")
+	if jailStr != "" {
+		for _, j := range strings.Split(jailStr, ",") {
+			j = strings.TrimSpace(j)
+			if j != "" {
+				cfg.Fail2BanJails = append(cfg.Fail2BanJails, j)
+			}
+		}
+	}
+	if len(cfg.Fail2BanJails) == 0 {
+		cfg.Fail2BanJails = []string{"sshd", "recidive"}
+	}
 
 	return cfg, nil
 }

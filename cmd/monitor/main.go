@@ -47,7 +47,7 @@ func main() {
 	store := checker.NewMetricsStore()
 
 	// Start live web dashboard in a background goroutine
-	dash := dashboard.New(store, cfg.CheckInterval)
+	dash := dashboard.New(store, cfg.CheckInterval, cfg.ManagedServices, cfg.Fail2BanJails)
 	go func() {
 		addr := fmt.Sprintf(":%d", cfg.WebPort)
 		if err := dash.ListenAndServe(addr); err != nil {

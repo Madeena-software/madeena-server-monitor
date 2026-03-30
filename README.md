@@ -17,6 +17,10 @@ A robust, production-ready **server monitoring daemon** written in Go. It period
 | **Uptime** | Days / hours / minutes since last boot |
 | **Alerting** | Immediate email on threshold breach, with 3-hour cooldown to prevent spam |
 | **Heartbeat** | Daily summary email at a configurable hour |
+| **Security Logs** | Real-time stream from `/var/log/auth.log` |
+| **Service Management** | View status and restart/start/stop systemd services via dashboard |
+| **Fail2Ban Integration** | View banned IPs, unban IPs, monitor multiple jails |
+| **Network Tools** | Detect current public IP, whitelist IPs to SSH firewall (UFW) |
 
 ---
 
@@ -28,10 +32,19 @@ madeena-server-monitor/
 │   └── monitor/
 │       └── main.go             # Main entry point
 ├── internal/
+│   ├── assets/
+│   │   └── web/                # Embedded web dashboard
 │   ├── config/
 │   │   └── config.go           # Environment variable configuration
 │   ├── checker/
 │   │   └── checker.go          # System metrics collection (gopsutil)
+│   ├── dashboard/
+│   │   └── server.go           # HTTP server & API endpoints
+│   ├── manage/
+│   │   ├── logs.go             # Security log streaming
+│   │   ├── services.go         # systemd service management
+│   │   ├── fail2ban.go         # Fail2Ban integration
+│   │   └── network.go          # IP detection & firewall rules
 │   └── notifier/
 │       ├── email.go            # SMTP email sending (gomail)
 │       └── alertmanager.go     # Alert debounce / cooldown logic
@@ -93,6 +106,9 @@ Copy `.env.example` to `.env` and fill in the values:
 | `HEARTBEAT_HOUR` | `8` | Hour of day (0–23) for the daily heartbeat email |
 | `DATA_PARTITIONS` | *(empty)* | Extra mount points to monitor, comma-separated |
 | `SERVER_NAME` | `madeena-server` | Friendly name used in email subjects |
+| `WEB_PORT` | `8080` | TCP port for the live web dashboard |
+| `MANAGED_SERVICES` | `sshd,nginx` | Systemd services to manage (comma-separated) |
+| `FAIL2BAN_JAILS` | `sshd,recidive` | Fail2Ban jails to monitor (comma-separated) |
 
 ### Gmail app password
 
@@ -147,6 +163,63 @@ The monitor runs `smartctl` as the service user. To allow a non-root user to run
 ```bash
 sudo setcap cap_sys_rawio+ep /usr/sbin/smartctl
 sudo usermod -aG disk madeena-monitor
+```
+
+---
+
+## Server Management & Security Features
+
+The web dashboard provides real-time server management and security operations:
+
+### Security Log Stream
+
+- **Endpoint**: `GET /api/manage/logs/auth?lines=80`
+- **Description**: Stream authentication logs from `/var/log/auth.log` in real-time
+- **Parameters**: 
+  - `lines` (optional, default 80): Number of tail lines to retrieve
+- **Response**: JSON array of log lines
+
+### Service Management
+
+Manage systemd services directly from the dashboard:
+
+- **List Services**: `GET /api/manage/services/status`
+  - Returns current status of all configured services (active/enabled)
+
+- **Restart Service**: `POST /api/manage/services/<name>/restart`
+- **Start Service**: `POST /api/manage/services/<name>/start`
+- **Stop Service**: `POST /api/manage/services/<name>/stop`
+  - All return updated service status
+
+### Fail2Ban Integration
+
+Real-time interaction with Fail2Ban:
+
+- **List Banned IPs**: `GET /api/manage/fail2ban/banned`
+  - Returns all currently banned IPs across configured jails
+
+- **Unban IP**: `POST /api/manage/fail2ban/unban`
+  - Body: `{"ip": "203.0.113.42", "jail": "sshd"}`
+  - Removes IP from the specified jail's ban list
+
+### Network & Firewall
+
+- **Detect Current IP**: `GET /api/manage/network/current-ip`
+  - Returns the server's public IP address
+
+- **Whitelist IP for SSH**: `POST /api/manage/firewall/whitelist-current-ip`
+  - Body: `{"ip": "203.0.113.42", "port": 22, "protocol": "tcp"}`
+  - Adds the IP to UFW allowlist (requires UFW installed)
+
+### Permissions
+
+Service management operations (systemd, Fail2Ban, UFW) require the monitor service user to have sudo privileges without password prompt:
+
+```bash
+# Add to /etc/sudoers or /etc/sudoers.d/madeena-monitor
+madeena-monitor ALL=(ALL) NOPASSWD: /usr/bin/systemctl
+madeena-monitor ALL=(ALL) NOPASSWD: /usr/bin/fail2ban-client
+madeena-monitor ALL=(ALL) NOPASSWD: /usr/sbin/ufw
 ```
 
 ---
