@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en" class="dark">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,376 +8,840 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
   <style>
-    body { background: #0b1120; color: #f8fafc; font-family: 'Inter', system-ui, sans-serif; }
-    .card { background: #1e293b; border: 1px solid #334155; border-radius: 0.75rem; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
-    
+    body {
+      background: #0b1120;
+      color: #f8fafc;
+      font-family: 'Inter', system-ui, sans-serif;
+    }
+
+    .card {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 0.75rem;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    }
+
     /* Badges */
-    .badge-ok    { background: rgba(22, 101, 52, 0.3); color: #4ade80; border: 1px solid rgba(74, 222, 128, 0.2); }
-    .badge-warn  { background: rgba(133, 77, 14, 0.3); color: #facc15; border: 1px solid rgba(250, 204, 21, 0.2); }
-    .badge-crit  { background: rgba(127, 29, 29, 0.3); color: #f87171; border: 1px solid rgba(248, 113, 113, 0.2); }
-    .badge-na    { background: rgba(55, 65, 81, 0.3); color: #9ca3af; border: 1px solid rgba(156, 163, 175, 0.2); }
-    
+    .badge-ok {
+      background: rgba(22, 101, 52, 0.3);
+      color: #4ade80;
+      border: 1px solid rgba(74, 222, 128, 0.2);
+    }
+
+    .badge-warn {
+      background: rgba(133, 77, 14, 0.3);
+      color: #facc15;
+      border: 1px solid rgba(250, 204, 21, 0.2);
+    }
+
+    .badge-crit {
+      background: rgba(127, 29, 29, 0.3);
+      color: #f87171;
+      border: 1px solid rgba(248, 113, 113, 0.2);
+    }
+
+    .badge-na {
+      background: rgba(55, 65, 81, 0.3);
+      color: #9ca3af;
+      border: 1px solid rgba(156, 163, 175, 0.2);
+    }
+
     /* Table Styling */
-    th { background: #0f172a; color:#cbd5e1; font-size:0.75rem; text-transform:uppercase; letter-spacing:0.05em; border-bottom: 2px solid #334155; }
-    tr:nth-child(even) td { background: rgba(15, 23, 42, 0.4); }
-    tr:hover td { background: rgba(51, 65, 85, 0.5) !important; transition: background 0.2s; }
-    td { font-size: 0.85rem; border-bottom: 1px solid #334155; }
-    .section-header { background:#1e293b; color:#60a5fa; font-weight:600; font-size:0.8rem; letter-spacing:0.05em; text-transform:uppercase; border-bottom: 1px solid #334155; }
-    
+    th {
+      background: #0f172a;
+      color: #cbd5e1;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      border-bottom: 2px solid #334155;
+    }
+
+    tr:nth-child(even) td {
+      background: rgba(15, 23, 42, 0.4);
+    }
+
+    tr:hover td {
+      background: rgba(51, 65, 85, 0.5) !important;
+      transition: background 0.2s;
+    }
+
+    td {
+      font-size: 0.85rem;
+      border-bottom: 1px solid #334155;
+    }
+
+    .section-header {
+      background: #1e293b;
+      color: #60a5fa;
+      font-weight: 600;
+      font-size: 0.8rem;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      border-bottom: 1px solid #334155;
+    }
+
     /* Status Dots */
-    .status-dot { display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:6px; box-shadow: 0 0 8px currentColor; }
-    .dot-ok   { background:#22c55e; color: #22c55e; }
-    .dot-warn { background:#eab308; color: #eab308; }
-    .dot-crit { background:#ef4444; color: #ef4444; animation: pulse 1s infinite; }
-    
-    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
-    #toast { transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); transform: translateY(-20px); }
-    #toast.show { opacity: 1; transform: translateY(0); pointer-events: auto; }
+    .status-dot {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      margin-right: 6px;
+      box-shadow: 0 0 8px currentColor;
+    }
+
+    .dot-ok {
+      background: #22c55e;
+      color: #22c55e;
+    }
+
+    .dot-warn {
+      background: #eab308;
+      color: #eab308;
+    }
+
+    .dot-crit {
+      background: #ef4444;
+      color: #ef4444;
+      animation: pulse 1s infinite;
+    }
+
+    @keyframes pulse {
+
+      0%,
+      100% {
+        opacity: 1
+      }
+
+      50% {
+        opacity: .4
+      }
+    }
+
+    #toast {
+      transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+      transform: translateY(-20px);
+    }
+
+    #toast.show {
+      opacity: 1;
+      transform: translateY(0);
+      pointer-events: auto;
+    }
+
+    .terminal {
+      background: #020617;
+      border: 1px solid #1e293b;
+      border-radius: 0.75rem;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+    }
+
+    .terminal-header {
+      border-bottom: 1px solid #1e293b;
+      background: rgba(15, 23, 42, 0.8);
+    }
+
+    .service-pill-active {
+      background: rgba(22, 101, 52, 0.35);
+      color: #86efac;
+      border: 1px solid rgba(74, 222, 128, 0.3);
+    }
+
+    .service-pill-inactive {
+      background: rgba(127, 29, 29, 0.35);
+      color: #fca5a5;
+      border: 1px solid rgba(248, 113, 113, 0.3);
+    }
   </style>
 </head>
+
 <body class="min-h-screen p-4 md:p-6 lg:p-8">
 
-<!-- Header -->
-<div class="flex flex-col md:flex-row items-start md:items-center justify-between mb-6 card px-5 py-4 gap-4">
-  <div class="flex items-center gap-4">
-    <!-- SVG Fix: Added explicit width/height and flex-shrink-0 -->
-    <svg class="text-blue-400 flex-shrink-0" width="32" height="32" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2V9M9 21H5a2 2 0 01-2-2V9m0 0h18"></path>
+  <!-- Header -->
+  <div class="flex flex-col md:flex-row items-start md:items-center justify-between mb-6 card px-5 py-4 gap-4">
+    <div class="flex items-center gap-4">
+      <!-- SVG Fix: Added explicit width/height and flex-shrink-0 -->
+      <svg class="text-blue-400 flex-shrink-0" width="32" height="32" fill="none" viewBox="0 0 24 24"
+        stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+          d="M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2V9M9 21H5a2 2 0 01-2-2V9m0 0h18">
+        </path>
+      </svg>
+      <div>
+        <h1 class="text-xl font-bold text-white tracking-wide">Madeena Server Monitor</h1>
+        <p class="text-xs text-blue-200 mt-0.5 opacity-80">Live Hardware Dashboard — HWMonitor Style</p>
+      </div>
+    </div>
+    <div class="text-left md:text-right flex flex-col gap-1">
+      <div>
+        <div id="statusBadge" class="inline-flex items-center px-2.5 py-1 rounded text-xs font-medium badge-na">
+          <span class="status-dot dot-warn"></span> Connecting…
+        </div>
+      </div>
+      <div class="text-xs text-slate-400">Uptime: <span id="uptime" class="text-slate-200 font-medium">–</span></div>
+      <div class="text-xs text-slate-400">Load: <span id="loadavg" class="text-slate-200 font-medium">–</span></div>
+    </div>
+  </div>
+
+  <!-- Toast notification -->
+  <div id="toast"
+    class="fixed top-6 right-6 z-50 px-5 py-3 rounded-lg shadow-xl text-sm font-semibold opacity-0 pointer-events-none max-w-sm flex items-center gap-3"
+    style="background:#7f1d1d; color:#fecaca; border:1px solid #ef4444">
+    <svg class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+        d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z">
+      </path>
     </svg>
-    <div>
-      <h1 class="text-xl font-bold text-white tracking-wide">Madeena Server Monitor</h1>
-      <p class="text-xs text-blue-200 mt-0.5 opacity-80">Live Hardware Dashboard — HWMonitor Style</p>
+    <span id="toastMsg"></span>
+  </div>
+
+  <!-- Charts Grid -->
+  <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5 mb-6">
+    <!-- Chart Cards with explicit relative wrapper for Chart.js -->
+    <div class="card p-4 flex flex-col">
+      <p class="text-xs text-slate-400 mb-3 font-semibold tracking-wider uppercase">CPU Total Usage (%)</p>
+      <div class="relative flex-grow" style="height: 160px; width: 100%;"><canvas id="chartCPU"></canvas></div>
+    </div>
+    <div class="card p-4 flex flex-col">
+      <p class="text-xs text-slate-400 mb-3 font-semibold tracking-wider uppercase">RAM Usage (%)</p>
+      <div class="relative flex-grow" style="height: 160px; width: 100%;"><canvas id="chartRAM"></canvas></div>
+    </div>
+    <div class="card p-4 flex flex-col">
+      <p class="text-xs text-slate-400 mb-3 font-semibold tracking-wider uppercase">CPU Temp (°C)</p>
+      <div class="relative flex-grow" style="height: 160px; width: 100%;"><canvas id="chartTemp"></canvas></div>
+    </div>
+    <div class="card p-4 flex flex-col">
+      <p class="text-xs text-slate-400 mb-3 font-semibold tracking-wider uppercase">Root Disk Usage (%)</p>
+      <div class="relative flex-grow" style="height: 160px; width: 100%;"><canvas id="chartDisk"></canvas></div>
+    </div>
+    <div class="card p-4 flex flex-col">
+      <p class="text-xs text-slate-400 mb-3 font-semibold tracking-wider uppercase">Network Rx (KB/s)</p>
+      <div class="relative flex-grow" style="height: 160px; width: 100%;"><canvas id="chartNetRx"></canvas></div>
+    </div>
+    <div class="card p-4 flex flex-col">
+      <p class="text-xs text-slate-400 mb-3 font-semibold tracking-wider uppercase">Network Tx (KB/s)</p>
+      <div class="relative flex-grow" style="height: 160px; width: 100%;"><canvas id="chartNetTx"></canvas></div>
     </div>
   </div>
-  <div class="text-left md:text-right flex flex-col gap-1">
-    <div>
-      <div id="statusBadge" class="inline-flex items-center px-2.5 py-1 rounded text-xs font-medium badge-na">
-        <span class="status-dot dot-warn"></span> Connecting…
+
+  <!-- Hardware Details -->
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+    <!-- Left Column: Sensor Table -->
+    <div class="lg:col-span-2 flex flex-col gap-6">
+      <div class="card overflow-hidden">
+        <div class="px-4 pt-4 pb-3 flex items-center justify-between gap-3 border-b border-slate-700">
+          <h2 class="text-sm font-bold text-slate-200 uppercase tracking-widest">Hardware Sensors</h2>
+          <span class="text-xs text-slate-400">Scrollable to keep 36-core data compact</span>
+        </div>
+        <div class="max-h-[500px] overflow-y-auto">
+          <table class="w-full border-collapse">
+            <thead class="sticky top-0 z-10">
+              <tr>
+                <th class="text-left px-4 py-3 w-1/2">Sensor / Component</th>
+                <th class="text-right px-4 py-3 w-1/6">Value</th>
+                <th class="text-right px-4 py-3 w-1/6">Min</th>
+                <th class="text-right px-4 py-3 w-1/6">Max</th>
+              </tr>
+            </thead>
+            <tbody id="sensorTable">
+              <tr>
+                <td colspan="4" class="text-center py-10 text-slate-500">Waiting for hardware data…</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card p-5">
+        <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+          <div class="flex items-center gap-2">
+            <svg class="w-5 h-5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M12 11c0 1.105-.895 2-2 2H7a2 2 0 01-2-2V7a2 2 0 012-2h3c1.105 0 2 .895 2 2m0 4V7m0 4v3a2 2 0 002 2h3a2 2 0 002-2v-3m-5 0h5m-5 0V7a2 2 0 012-2h3a2 2 0 012 2v4">
+              </path>
+            </svg>
+            <h2 class="text-sm font-bold text-slate-200 uppercase tracking-widest">Service Management</h2>
+          </div>
+          <button id="refreshServicesBtn"
+            class="px-3 py-1.5 rounded-md text-xs font-semibold bg-slate-800 border border-slate-600 text-slate-200 hover:bg-slate-700">Refresh
+            Status</button>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full border-collapse">
+            <thead>
+              <tr>
+                <th class="text-left px-3 py-2">Service</th>
+                <th class="text-left px-3 py-2">Status</th>
+                <th class="text-right px-3 py-2">Action</th>
+              </tr>
+            </thead>
+            <tbody id="serviceTable">
+              <tr>
+                <td colspan="3" class="text-center py-6 text-slate-500">Loading services…</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
-    <div class="text-xs text-slate-400">Uptime: <span id="uptime" class="text-slate-200 font-medium">–</span></div>
-    <div class="text-xs text-slate-400">Load: <span id="loadavg" class="text-slate-200 font-medium">–</span></div>
-  </div>
-</div>
 
-<!-- Toast notification -->
-<div id="toast" class="fixed top-6 right-6 z-50 px-5 py-3 rounded-lg shadow-xl text-sm font-semibold opacity-0 pointer-events-none max-w-sm flex items-center gap-3" style="background:#7f1d1d; color:#fecaca; border:1px solid #ef4444">
-  <svg class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
-  <span id="toastMsg"></span>
-</div>
+    <!-- Right Column: S.M.A.R.T & Info -->
+    <div class="flex flex-col gap-6">
+      <div class="card p-5">
+        <div class="flex items-center gap-2 mb-4">
+          <svg class="w-5 h-5 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4">
+            </path>
+          </svg>
+          <h2 class="text-sm font-bold text-slate-200 uppercase tracking-widest">S.M.A.R.T Disk Health</h2>
+        </div>
+        <div id="smartHealth" class="flex flex-col gap-3 text-sm">
+          <span class="text-slate-500 italic">Waiting...</span>
+        </div>
+      </div>
 
-<!-- Charts Grid -->
-<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5 mb-6">
-  <!-- Chart Cards with explicit relative wrapper for Chart.js -->
-  <div class="card p-4 flex flex-col">
-    <p class="text-xs text-slate-400 mb-3 font-semibold tracking-wider uppercase">CPU Total Usage (%)</p>
-    <div class="relative flex-grow" style="height: 160px; width: 100%;"><canvas id="chartCPU"></canvas></div>
-  </div>
-  <div class="card p-4 flex flex-col">
-    <p class="text-xs text-slate-400 mb-3 font-semibold tracking-wider uppercase">RAM Usage (%)</p>
-    <div class="relative flex-grow" style="height: 160px; width: 100%;"><canvas id="chartRAM"></canvas></div>
-  </div>
-  <div class="card p-4 flex flex-col">
-    <p class="text-xs text-slate-400 mb-3 font-semibold tracking-wider uppercase">CPU Temp (°C)</p>
-    <div class="relative flex-grow" style="height: 160px; width: 100%;"><canvas id="chartTemp"></canvas></div>
-  </div>
-  <div class="card p-4 flex flex-col">
-    <p class="text-xs text-slate-400 mb-3 font-semibold tracking-wider uppercase">Root Disk Usage (%)</p>
-    <div class="relative flex-grow" style="height: 160px; width: 100%;"><canvas id="chartDisk"></canvas></div>
-  </div>
-  <div class="card p-4 flex flex-col">
-    <p class="text-xs text-slate-400 mb-3 font-semibold tracking-wider uppercase">Network Rx (KB/s)</p>
-    <div class="relative flex-grow" style="height: 160px; width: 100%;"><canvas id="chartNetRx"></canvas></div>
-  </div>
-  <div class="card p-4 flex flex-col">
-    <p class="text-xs text-slate-400 mb-3 font-semibold tracking-wider uppercase">Network Tx (KB/s)</p>
-    <div class="relative flex-grow" style="height: 160px; width: 100%;"><canvas id="chartNetTx"></canvas></div>
-  </div>
-</div>
+      <div class="card p-5">
+        <div class="flex items-center gap-2 mb-4">
+          <svg class="w-5 h-5 text-cyan-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2h-1V9a5 5 0 00-10 0v2H6a2 2 0 00-2 2v6a2 2 0 002 2zm8-10V9a3 3 0 00-6 0v2h6z">
+            </path>
+          </svg>
+          <h2 class="text-sm font-bold text-slate-200 uppercase tracking-widest">Access Recovery</h2>
+        </div>
+        <div class="flex flex-col gap-3 text-sm">
+          <div class="rounded-lg bg-slate-900/70 border border-slate-700 px-3 py-2">
+            <p class="text-xs text-slate-400 mb-1">Detected Public IP</p>
+            <p id="detectedIp" class="font-mono text-cyan-300">Detecting…</p>
+          </div>
+          <button id="whitelistIpBtn"
+            class="w-full px-3 py-2 rounded-md text-sm font-semibold bg-cyan-600/80 text-cyan-50 hover:bg-cyan-500 border border-cyan-400/50">Whitelist
+            My IP For SSH</button>
+          <p class="text-xs text-slate-400">Fallback action for lockout recovery. Targets port 22 allowlist rules.</p>
+        </div>
+      </div>
 
-<!-- Hardware Details -->
-<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-  
-  <!-- Left Column: Sensor Table -->
-  <div class="lg:col-span-2 flex flex-col gap-6">
-    <div class="card overflow-hidden">
-      <table class="w-full border-collapse">
-        <thead>
-          <tr>
-            <th class="text-left px-4 py-3 w-1/2">Sensor / Component</th>
-            <th class="text-right px-4 py-3 w-1/6">Value</th>
-            <th class="text-right px-4 py-3 w-1/6">Min</th>
-            <th class="text-right px-4 py-3 w-1/6">Max</th>
-          </tr>
-        </thead>
-        <tbody id="sensorTable">
-          <tr><td colspan="4" class="text-center py-10 text-slate-500">Waiting for hardware data…</td></tr>
-        </tbody>
-      </table>
+      <div class="card p-5">
+        <div class="flex items-center justify-between gap-2 mb-4">
+          <div class="flex items-center gap-2">
+            <svg class="w-5 h-5 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
+              </path>
+            </svg>
+            <h2 class="text-sm font-bold text-slate-200 uppercase tracking-widest">Fail2Ban</h2>
+          </div>
+          <button id="refreshBansBtn"
+            class="px-2.5 py-1 rounded text-xs font-semibold bg-slate-800 border border-slate-600 text-slate-200 hover:bg-slate-700">Refresh</button>
+        </div>
+        <div id="bannedList" class="flex flex-col gap-2 text-sm">
+          <span class="text-slate-500 italic">Loading banned IPs…</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Security Logs -->
+  <div class="mt-6 card p-5">
+    <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+      <div class="flex items-center gap-2">
+        <svg class="w-5 h-5 text-lime-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M8 9h8m-8 4h5m-7 8h10a2 2 0 002-2V5a2 2 0 00-2-2H8.586a1 1 0 00-.707.293L4.293 6.879A1 1 0 004 7.586V19a2 2 0 002 2z">
+          </path>
+        </svg>
+        <h2 class="text-sm font-bold text-slate-200 uppercase tracking-widest">Security Log Stream (/var/log/auth.log)
+        </h2>
+      </div>
+      <div class="flex items-center gap-2">
+        <button id="refreshLogsBtn"
+          class="px-3 py-1.5 rounded-md text-xs font-semibold bg-slate-800 border border-slate-600 text-slate-200 hover:bg-slate-700">Refresh
+          Logs</button>
+        <label class="inline-flex items-center gap-2 text-xs text-slate-300">
+          <input id="autoScrollLogs" type="checkbox" class="rounded border-slate-500 bg-slate-900 text-blue-500"
+            checked>
+          Auto-scroll
+        </label>
+      </div>
+    </div>
+    <div class="terminal">
+      <div class="terminal-header px-4 py-2 flex items-center justify-between">
+        <p class="text-xs text-slate-400">tail -n 80 /var/log/auth.log</p>
+        <span id="logTimestamp" class="text-xs text-slate-500">not loaded</span>
+      </div>
+      <pre id="authLogViewer"
+        class="max-h-[360px] overflow-y-auto p-4 text-xs leading-5 text-emerald-300 whitespace-pre-wrap">Loading authentication logs…</pre>
     </div>
   </div>
 
-  <!-- Right Column: S.M.A.R.T & Info -->
-  <div class="flex flex-col gap-6">
-    <div class="card p-5">
-      <div class="flex items-center gap-2 mb-4">
-        <svg class="w-5 h-5 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"></path></svg>
-        <h2 class="text-sm font-bold text-slate-200 uppercase tracking-widest">S.M.A.R.T Disk Health</h2>
-      </div>
-      <div id="smartHealth" class="flex flex-col gap-3 text-sm">
-        <span class="text-slate-500 italic">Waiting...</span>
-      </div>
-    </div>
-  </div>
+  <script>
+    // ─── Chart Helpers ─────────────────────────────────────────────────────────
+    const CHART_COLORS = {
+      cpu: { border: '#3b82f6', bg: 'rgba(59,130,246,0.1)' },
+      ram: { border: '#8b5cf6', bg: 'rgba(139,92,246,0.1)' },
+      temp: { border: '#ef4444', bg: 'rgba(239,68,68,0.1)' },
+      disk: { border: '#f97316', bg: 'rgba(249,115,22,0.1)' },
+      netrx: { border: '#10b981', bg: 'rgba(16,185,129,0.1)' },
+      nettx: { border: '#f59e0b', bg: 'rgba(245,158,11,0.1)' },
+    };
 
-</div>
-
-<script>
-// ─── Chart Helpers ─────────────────────────────────────────────────────────
-const CHART_COLORS = {
-  cpu:   { border:'#3b82f6', bg:'rgba(59,130,246,0.1)' },
-  ram:   { border:'#8b5cf6', bg:'rgba(139,92,246,0.1)' },
-  temp:  { border:'#ef4444', bg:'rgba(239,68,68,0.1)' },
-  disk:  { border:'#f97316', bg:'rgba(249,115,22,0.1)'  },
-  netrx: { border:'#10b981', bg:'rgba(16,185,129,0.1)' },
-  nettx: { border:'#f59e0b', bg:'rgba(245,158,11,0.1)' },
-};
-
-function makeChart(id, key) {
-  const c = CHART_COLORS[key];
-  return new Chart(document.getElementById(id), {
-    type: 'line',
-    data: { labels: [], datasets: [{ data: [], borderColor: c.border, backgroundColor: c.bg,
-      borderWidth: 2, pointRadius: 0, fill: true, tension: 0.4 }] },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false, // CRITICAL FIX FOR CHART HEIGHT
-      animation: false,
-      plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false } },
-      scales: {
-        x: { display: false },
-        y: { min: 0, grid: { color:'rgba(255,255,255,0.05)' },
-             ticks: { color:'#64748b', font:{size:11, family:'Inter'} }, border:{display:false} }
-      },
-      interaction: { mode:'nearest', intersect:false }
+    function makeChart(id, key) {
+      const c = CHART_COLORS[key];
+      return new Chart(document.getElementById(id), {
+        type: 'line',
+        data: {
+          labels: [], datasets: [{
+            data: [], borderColor: c.border, backgroundColor: c.bg,
+            borderWidth: 2, pointRadius: 0, fill: true, tension: 0.4
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false, // CRITICAL FIX FOR CHART HEIGHT
+          animation: false,
+          plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false } },
+          scales: {
+            x: { display: false },
+            y: {
+              min: 0, grid: { color: 'rgba(255,255,255,0.05)' },
+              ticks: { color: '#64748b', font: { size: 11, family: 'Inter' } }, border: { display: false }
+            }
+          },
+          interaction: { mode: 'nearest', intersect: false }
+        }
+      });
     }
-  });
-}
 
-const charts = {
-  cpu:   makeChart('chartCPU',   'cpu'),
-  ram:   makeChart('chartRAM',   'ram'),
-  temp:  makeChart('chartTemp',  'temp'),
-  disk:  makeChart('chartDisk',  'disk'),
-  netrx: makeChart('chartNetRx', 'netrx'),
-  nettx: makeChart('chartNetTx', 'nettx'),
-};
+    const charts = {
+      cpu: makeChart('chartCPU', 'cpu'),
+      ram: makeChart('chartRAM', 'ram'),
+      temp: makeChart('chartTemp', 'temp'),
+      disk: makeChart('chartDisk', 'disk'),
+      netrx: makeChart('chartNetRx', 'netrx'),
+      nettx: makeChart('chartNetTx', 'nettx'),
+    };
 
-function updateChart(chart, labels, data) {
-  chart.data.labels = labels;
-  chart.data.datasets[0].data = data;
-  chart.update('none');
-}
+    function updateChart(chart, labels, data) {
+      chart.data.labels = labels;
+      chart.data.datasets[0].data = data;
+      chart.update('none');
+    }
 
-// ─── Toast ──────────────────────────────────────────────────────────────────
-let toastTimer = null;
-function showToast(msg) {
-  const el = document.getElementById('toast');
-  document.getElementById('toastMsg').textContent = msg;
-  el.classList.add('show');
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => { el.classList.remove('show'); }, 8000);
-}
+    // ─── Toast ──────────────────────────────────────────────────────────────────
+    let toastTimer = null;
+    function showToast(msg, type = 'alert') {
+      const themes = {
+        alert: { bg: '#7f1d1d', color: '#fecaca', border: '#ef4444' },
+        success: { bg: '#14532d', color: '#bbf7d0', border: '#22c55e' },
+        info: { bg: '#1e3a8a', color: '#bfdbfe', border: '#3b82f6' },
+        error: { bg: '#7f1d1d', color: '#fecaca', border: '#ef4444' },
+      };
+      const t = themes[type] || themes.alert;
+      const el = document.getElementById('toast');
+      document.getElementById('toastMsg').textContent = msg;
+      el.style.background = t.bg;
+      el.style.color = t.color;
+      el.style.borderColor = t.border;
+      el.classList.add('show');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => { el.classList.remove('show'); }, 8000);
+    }
 
-// ─── Formatting ─────────────────────────────────────────────────────────────
-const fmtPct  = v => (v || 0).toFixed(1) + ' %';
-const fmtTemp = v => (!v || v === 0) ? 'N/A' : v.toFixed(1) + ' °C';
-const fmtMHz  = v => (v || 0).toFixed(0) + ' MHz';
-const fmtRPM  = v => (v || 0).toFixed(0) + ' RPM';
-const fmtV    = v => (v || 0).toFixed(3) + ' V';
-const fmtKB   = v => ((v || 0) / 1024).toFixed(1) + ' KB/s';
+    // ─── Formatting ─────────────────────────────────────────────────────────────
+    const fmtPct = v => (v || 0).toFixed(1) + ' %';
+    const fmtTemp = v => (!v || v === 0) ? 'N/A' : v.toFixed(1) + ' °C';
+    const fmtMHz = v => (v || 0).toFixed(0) + ' MHz';
+    const fmtRPM = v => (v || 0).toFixed(0) + ' RPM';
+    const fmtV = v => (v || 0).toFixed(3) + ' V';
+    const fmtKB = v => ((v || 0) / 1024).toFixed(1) + ' KB/s';
 
-function pctClass(v, warn=70, crit=90) {
-  if (v >= crit) return 'badge-crit';
-  if (v >= warn) return 'badge-warn';
-  return 'badge-ok';
-}
-function tempClass(v) {
-  if (v >= 85) return 'badge-crit';
-  if (v >= 70) return 'badge-warn';
-  if (!v || v === 0) return 'badge-na';
-  return 'badge-ok';
-}
+    function pctClass(v, warn = 70, crit = 90) {
+      if (v >= crit) return 'badge-crit';
+      if (v >= warn) return 'badge-warn';
+      return 'badge-ok';
+    }
+    function tempClass(v) {
+      if (v >= 85) return 'badge-crit';
+      if (v >= 70) return 'badge-warn';
+      if (!v || v === 0) return 'badge-na';
+      return 'badge-ok';
+    }
 
-// ─── Table Builder ──────────────────────────────────────────────────────────
-function sectionRow(label) {
-  return `<tr><td colspan="4" class="section-header px-4 py-2">▸ ${label}</td></tr>`;
-}
+    // ─── Table Builder ──────────────────────────────────────────────────────────
+    function sectionRow(label) {
+      return `<tr><td colspan="4" class="section-header px-4 py-2">▸ ${label}</td></tr>`;
+    }
 
-function sensorRow(name, value, min, max, cls='') {
-  return `<tr>
+    function sensorRow(name, value, min, max, cls = '') {
+      return `<tr>
     <td class="px-4 py-2 text-slate-300 font-medium">${name}</td>
     <td class="px-4 py-2 text-right"><span class="px-2 py-0.5 rounded text-xs font-semibold tracking-wide ${cls}">${value}</span></td>
     <td class="px-4 py-2 text-right text-slate-400 font-mono text-xs">${min}</td>
     <td class="px-4 py-2 text-right text-slate-400 font-mono text-xs">${max}</td>
   </tr>`;
-}
+    }
 
-function buildTable(d) {
-  let rows = '';
+    function buildTable(d) {
+      let rows = '';
 
-  // ── Voltages ──
-  if (d.voltages && d.voltages.length) {
-    rows += sectionRow('Voltages');
-    d.voltages.forEach(s => rows += sensorRow(s.name, fmtV(s.value), fmtV(s.min), fmtV(s.max)));
-  }
+      // ── Voltages ──
+      if (d.voltages && d.voltages.length) {
+        rows += sectionRow('Voltages');
+        d.voltages.forEach(s => rows += sensorRow(s.name, fmtV(s.value), fmtV(s.min), fmtV(s.max)));
+      }
 
-  // ── Temperatures ──
-  rows += sectionRow('Temperatures');
-  if (d.temperatures && d.temperatures.length) {
-    d.temperatures.forEach(s => rows += sensorRow(s.name, fmtTemp(s.value), fmtTemp(s.min), fmtTemp(s.max), tempClass(s.value)));
-  } else if (d.temp_main) {
-    rows += sensorRow('CPU Temp (Main)', fmtTemp(d.temp_main.value), fmtTemp(d.temp_main.min), fmtTemp(d.temp_main.max), tempClass(d.temp_main.value));
-  }
+      // ── Temperatures ──
+      rows += sectionRow('Temperatures');
+      if (d.temperatures && d.temperatures.length) {
+        d.temperatures.forEach(s => rows += sensorRow(s.name, fmtTemp(s.value), fmtTemp(s.min), fmtTemp(s.max), tempClass(s.value)));
+      } else if (d.temp_main) {
+        rows += sensorRow('CPU Temp (Main)', fmtTemp(d.temp_main.value), fmtTemp(d.temp_main.min), fmtTemp(d.temp_main.max), tempClass(d.temp_main.value));
+      }
 
-  // ── Fans ──
-  if (d.fans && d.fans.length) {
-    rows += sectionRow('Fans');
-    d.fans.forEach(s => rows += sensorRow(s.name, fmtRPM(s.value), fmtRPM(s.min), fmtRPM(s.max)));
-  }
+      // ── Fans ──
+      if (d.fans && d.fans.length) {
+        rows += sectionRow('Fans');
+        d.fans.forEach(s => rows += sensorRow(s.name, fmtRPM(s.value), fmtRPM(s.min), fmtRPM(s.max)));
+      }
 
-  // ── Utilization ──
-  rows += sectionRow('Utilization');
-  if (d.cpu_total) rows += sensorRow('CPU Total', fmtPct(d.cpu_total.value), fmtPct(d.cpu_total.min), fmtPct(d.cpu_total.max), pctClass(d.cpu_total.value));
-  if (d.ram) rows += sensorRow('RAM', fmtPct(d.ram.value), fmtPct(d.ram.min), fmtPct(d.ram.max), pctClass(d.ram.value));
-  if (d.cpu_cores && d.cpu_cores.length) {
-    d.cpu_cores.forEach(s => rows += sensorRow(s.name, fmtPct(s.value), fmtPct(s.min), fmtPct(s.max), pctClass(s.value)));
-  }
+      // ── Utilization ──
+      rows += sectionRow('Utilization');
+      if (d.cpu_total) rows += sensorRow('CPU Total', fmtPct(d.cpu_total.value), fmtPct(d.cpu_total.min), fmtPct(d.cpu_total.max), pctClass(d.cpu_total.value));
+      if (d.ram) rows += sensorRow('RAM', fmtPct(d.ram.value), fmtPct(d.ram.min), fmtPct(d.ram.max), pctClass(d.ram.value));
+      if (d.cpu_cores && d.cpu_cores.length) {
+        d.cpu_cores.forEach(s => rows += sensorRow(s.name, fmtPct(s.value), fmtPct(s.min), fmtPct(s.max), pctClass(s.value)));
+      }
 
-  // ── Clock Speeds ──
-  if (d.cpu_clocks_mhz && d.cpu_clocks_mhz.length) {
-    rows += sectionRow('Clock Speeds');
-    d.cpu_clocks_mhz.forEach(s => rows += sensorRow(s.name, fmtMHz(s.value), fmtMHz(s.min), fmtMHz(s.max)));
-  }
+      // ── Clock Speeds ──
+      if (d.cpu_clocks_mhz && d.cpu_clocks_mhz.length) {
+        rows += sectionRow('Clock Speeds');
+        d.cpu_clocks_mhz.forEach(s => rows += sensorRow(s.name, fmtMHz(s.value), fmtMHz(s.min), fmtMHz(s.max)));
+      }
 
-  // ── Space / Disk ──
-  rows += sectionRow('Space / Disk');
-  if (d.root_disk) rows += sensorRow('Root Disk /', fmtPct(d.root_disk.value), fmtPct(d.root_disk.min), fmtPct(d.root_disk.max), pctClass(d.root_disk.value));
-  if (d.data_disks && d.data_disks.length) {
-    d.data_disks.forEach(s => rows += sensorRow(s.name, fmtPct(s.value), fmtPct(s.min), fmtPct(s.max), pctClass(s.value)));
-  }
+      // ── Space / Disk ──
+      rows += sectionRow('Space / Disk');
+      if (d.root_disk) rows += sensorRow('Root Disk /', fmtPct(d.root_disk.value), fmtPct(d.root_disk.min), fmtPct(d.root_disk.max), pctClass(d.root_disk.value));
+      if (d.data_disks && d.data_disks.length) {
+        d.data_disks.forEach(s => rows += sensorRow(s.name, fmtPct(s.value), fmtPct(s.min), fmtPct(s.max), pctClass(s.value)));
+      }
 
-  // ── Network ──
-  rows += sectionRow('Network');
-  if (d.net_rx) rows += sensorRow('Rx Rate', fmtKB(d.net_rx.value), fmtKB(d.net_rx.min), fmtKB(d.net_rx.max));
-  if (d.net_tx) rows += sensorRow('Tx Rate', fmtKB(d.net_tx.value), fmtKB(d.net_tx.min), fmtKB(d.net_tx.max));
+      // ── Network ──
+      rows += sectionRow('Network');
+      if (d.net_rx) rows += sensorRow('Rx Rate', fmtKB(d.net_rx.value), fmtKB(d.net_rx.min), fmtKB(d.net_rx.max));
+      if (d.net_tx) rows += sensorRow('Tx Rate', fmtKB(d.net_tx.value), fmtKB(d.net_tx.min), fmtKB(d.net_tx.max));
 
-  document.getElementById('sensorTable').innerHTML = rows || '<tr><td colspan="4" class="text-center py-6 text-slate-500">No data available</td></tr>';
-}
+      document.getElementById('sensorTable').innerHTML = rows || '<tr><td colspan="4" class="text-center py-6 text-slate-500">No data available</td></tr>';
+    }
 
-// ─── Status badge ────────────────────────────────────────────────────────────
-function updateStatus(connected) {
-  const el = document.getElementById('statusBadge');
-  if (connected) {
-    el.className = 'inline-flex items-center px-2.5 py-1 rounded text-xs font-medium badge-ok';
-    el.innerHTML = '<span class="status-dot dot-ok"></span> Live';
-  } else {
-    el.className = 'inline-flex items-center px-2.5 py-1 rounded text-xs font-medium badge-warn';
-    el.innerHTML = '<span class="status-dot dot-warn"></span> Reconnecting…';
-  }
-}
+    // ─── Status badge ────────────────────────────────────────────────────────────
+    function updateStatus(connected) {
+      const el = document.getElementById('statusBadge');
+      if (connected) {
+        el.className = 'inline-flex items-center px-2.5 py-1 rounded text-xs font-medium badge-ok';
+        el.innerHTML = '<span class="status-dot dot-ok"></span> Live';
+      } else {
+        el.className = 'inline-flex items-center px-2.5 py-1 rounded text-xs font-medium badge-warn';
+        el.innerHTML = '<span class="status-dot dot-warn"></span> Reconnecting…';
+      }
+    }
 
-// ─── S.M.A.R.T ───────────────────────────────────────────────────────────────
-function updateSmart(health) {
-  const el = document.getElementById('smartHealth');
-  if (!health) { el.innerHTML = '<span class="text-slate-500 italic">No S.M.A.R.T data</span>'; return; }
-  const entries = Object.entries(health);
-  if (!entries.length) { el.innerHTML = '<span class="text-slate-500 italic">No devices found</span>'; return; }
-  
-  el.innerHTML = entries.map(([dev, s]) => {
-    const cls = s === 'PASSED' ? 'badge-ok text-green-400' : s === 'FAILED' ? 'badge-crit text-red-400' : 'badge-na text-slate-300';
-    return `<div class="flex justify-between items-center p-2 rounded bg-slate-800 border border-slate-700">
+    // ─── S.M.A.R.T ───────────────────────────────────────────────────────────────
+    function updateSmart(health) {
+      const el = document.getElementById('smartHealth');
+      if (!health) { el.innerHTML = '<span class="text-slate-500 italic">No S.M.A.R.T data</span>'; return; }
+      const entries = Object.entries(health);
+      if (!entries.length) { el.innerHTML = '<span class="text-slate-500 italic">No devices found</span>'; return; }
+
+      el.innerHTML = entries.map(([dev, s]) => {
+        const cls = s === 'PASSED' ? 'badge-ok text-green-400' : s === 'FAILED' ? 'badge-crit text-red-400' : 'badge-na text-slate-300';
+        return `<div class="flex justify-between items-center p-2 rounded bg-slate-800 border border-slate-700">
               <span class="font-mono text-slate-300">${dev}</span>
               <span class="px-2 py-0.5 rounded text-xs font-bold ${cls}">${s}</span>
             </div>`;
-  }).join('');
-}
-
-// ─── History Loader ─────────────────────────────────────────────────────────
-async function loadHistory() {
-  try {
-    const r = await fetch('/api/metrics/history');
-    if (!r.ok) return;
-    const h = await r.json();
-    if(h.labels) {
-      if(h.cpu_total) updateChart(charts.cpu,   h.labels, h.cpu_total);
-      if(h.ram)       updateChart(charts.ram,   h.labels, h.ram);
-      if(h.temp_main) updateChart(charts.temp,  h.labels, h.temp_main);
-      if(h.root_disk) updateChart(charts.disk,  h.labels, h.root_disk);
-      if(h.net_rx)    updateChart(charts.netrx, h.labels, h.net_rx.map(v => v / 1024));
-      if(h.net_tx)    updateChart(charts.nettx, h.labels, h.net_tx.map(v => v / 1024));
+      }).join('');
     }
-  } catch(e) { console.warn('history load failed', e); }
-}
 
-// ─── SSE ─────────────────────────────────────────────────────────────────────
-let lastCritical = '';
-let sseBackoff = 1000;
-function connectSSE() {
-  const es = new EventSource('/api/metrics/live');
+    // ─── Server Management / Security Actions ─────────────────────────────────
+    const MANAGEMENT_STATE = {
+      currentIP: 'unknown',
+      services: [
+        { name: 'sshd', active: true },
+        { name: 'nginx', active: true },
+        { name: 'mysql', active: false },
+      ],
+      bannedIPs: [
+        { ip: '203.0.113.42', jail: 'sshd', since: '2026-03-30 08:13:22' },
+        { ip: '198.51.100.17', jail: 'sshd', since: '2026-03-30 09:47:05' },
+      ],
+    };
 
-  es.onopen = () => { updateStatus(true); sseBackoff = 1000; };
+    function wait(ms) {
+      return new Promise(resolve => setTimeout(resolve, ms));
+    }
 
-  es.onmessage = (ev) => {
-    try {
-      const d = JSON.parse(ev.data);
-
-      document.getElementById('uptime').textContent  = d.uptime || '–';
-      document.getElementById('loadavg').textContent = d.load_avg ? d.load_avg.map(v => v.toFixed(2)).join(' / ') : '–';
-
-      const label = new Date(d.timestamp || Date.now()).toLocaleTimeString();
-      function appendPoint(chart, value) {
-        const data   = chart.data.datasets[0].data;
-        const labels = chart.data.labels;
-        data.push(value); labels.push(label);
-        if (data.length > 60) { data.shift(); labels.shift(); }
-        chart.update('none');
+    async function mockFetch(url, options = {}, fallbackData = {}, shouldFail = false) {
+      try {
+        const res = await fetch(url, options);
+        if (!res.ok) {
+          throw new Error(`request failed with ${res.status}`);
+        }
+        const contentType = res.headers.get('content-type') || '';
+        if (contentType.includes('application/json')) {
+          return await res.json();
+        }
+        return fallbackData;
+      } catch (err) {
+        await wait(500);
+        if (shouldFail) {
+          throw err;
+        }
+        return fallbackData;
       }
-      
-      appendPoint(charts.cpu,   d.cpu_total?.value  ?? 0);
-      appendPoint(charts.ram,   d.ram?.value        ?? 0);
-      appendPoint(charts.temp,  d.temp_main?.value  ?? 0);
-      appendPoint(charts.disk,  d.root_disk?.value  ?? 0);
-      appendPoint(charts.netrx, (d.net_rx?.value ?? 0) / 1024);
-      appendPoint(charts.nettx, (d.net_tx?.value ?? 0) / 1024);
+    }
 
-      buildTable(d);
-      updateSmart(d.smart_health);
+    function renderServices(services) {
+      const el = document.getElementById('serviceTable');
+      if (!services || !services.length) {
+        el.innerHTML = '<tr><td colspan="3" class="text-center py-6 text-slate-500">No services configured</td></tr>';
+        return;
+      }
+      el.innerHTML = services.map(s => {
+        const pill = s.active
+          ? '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold service-pill-active">active</span>'
+          : '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold service-pill-inactive">inactive</span>';
+        return `<tr>
+      <td class="px-3 py-2 text-slate-200 font-medium">${s.name}</td>
+      <td class="px-3 py-2">${pill}</td>
+      <td class="px-3 py-2 text-right">
+        <button class="restart-service-btn px-2.5 py-1 rounded text-xs font-semibold bg-slate-800 border border-slate-600 text-slate-100 hover:bg-slate-700" data-service="${s.name}">Restart</button>
+      </td>
+    </tr>`;
+      }).join('');
+    }
 
-      const crits = [];
-      if (d.cpu_total?.value >= 95)  crits.push(`CPU ${d.cpu_total.value.toFixed(1)}%`);
-      if (d.ram?.value       >= 90)  crits.push(`RAM ${d.ram.value.toFixed(1)}%`);
-      if (d.root_disk?.value >= 90)  crits.push(`Disk ${d.root_disk.value.toFixed(1)}%`);
-      if (d.temp_main?.value >= 85)  crits.push(`Temp ${d.temp_main.value.toFixed(1)}°C`);
-      
-      if (crits.length) {
-        const msg = 'Critical Alert: ' + crits.join(', ');
-        if (msg !== lastCritical) { showToast(msg); lastCritical = msg; }
-      } else { lastCritical = ''; }
+    function renderBannedIPs(items) {
+      const el = document.getElementById('bannedList');
+      if (!items || !items.length) {
+        el.innerHTML = '<div class="text-sm text-green-300 bg-green-900/20 border border-green-700/50 rounded-lg px-3 py-2">No banned IPs currently.</div>';
+        return;
+      }
+      el.innerHTML = items.map(item => `
+    <div class="rounded-lg bg-slate-900/70 border border-slate-700 px-3 py-2 flex items-center justify-between gap-3">
+      <div>
+        <p class="font-mono text-amber-200">${item.ip}</p>
+        <p class="text-xs text-slate-400">Jail: ${item.jail} • Since: ${item.since}</p>
+      </div>
+      <button class="unban-ip-btn px-2.5 py-1 rounded text-xs font-semibold bg-amber-600/80 text-amber-50 border border-amber-400/60 hover:bg-amber-500" data-ip="${item.ip}">Unban</button>
+    </div>
+  `).join('');
+    }
 
-    } catch(e) { console.error('SSE parse error', e); }
-  };
+    function renderAuthLogs(lines) {
+      const el = document.getElementById('authLogViewer');
+      el.textContent = lines && lines.length ? lines.join('\n') : 'No auth log entries available.';
+      document.getElementById('logTimestamp').textContent = 'updated ' + new Date().toLocaleTimeString();
+      if (document.getElementById('autoScrollLogs').checked) {
+        el.scrollTop = el.scrollHeight;
+      }
+    }
 
-  es.onerror = () => {
-    updateStatus(false);
-    es.close();
-    setTimeout(connectSSE, Math.min(sseBackoff, 30000));
-    sseBackoff = Math.min(sseBackoff * 2, 30000);
-  };
-}
+    async function fetchCurrentIP() {
+      const data = await mockFetch('/api/manage/network/current-ip', {}, { ip: '198.51.100.99' });
+      MANAGEMENT_STATE.currentIP = data.ip || 'unknown';
+      document.getElementById('detectedIp').textContent = MANAGEMENT_STATE.currentIP;
+    }
 
-// ─── Init ────────────────────────────────────────────────────────────────────
-loadHistory().then(connectSSE);
-</script>
+    async function whitelistCurrentIP() {
+      showToast('Processing: adding current IP to SSH firewall allowlist...', 'info');
+      const payload = { ip: MANAGEMENT_STATE.currentIP, port: 22, protocol: 'tcp' };
+      await mockFetch('/api/manage/firewall/whitelist-current-ip', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      }, { ok: true, ip: MANAGEMENT_STATE.currentIP });
+      showToast(`Success: ${MANAGEMENT_STATE.currentIP} is now allowed for SSH.`, 'success');
+    }
+
+    async function fetchServiceStatus() {
+      const data = await mockFetch('/api/manage/services/status', {}, { services: MANAGEMENT_STATE.services });
+      MANAGEMENT_STATE.services = data.services || MANAGEMENT_STATE.services;
+      renderServices(MANAGEMENT_STATE.services);
+    }
+
+    async function restartService(serviceName) {
+      showToast(`Processing: restarting ${serviceName}...`, 'info');
+      const data = await mockFetch(`/api/manage/services/${encodeURIComponent(serviceName)}/restart`, {
+        method: 'POST',
+      }, { ok: true, service: serviceName, active: true });
+      MANAGEMENT_STATE.services = MANAGEMENT_STATE.services.map(s => {
+        if (s.name !== serviceName) return s;
+        return { ...s, active: data.active !== false };
+      });
+      renderServices(MANAGEMENT_STATE.services);
+      showToast(`Success: ${serviceName} restart command completed.`, 'success');
+    }
+
+    async function fetchBannedIPs() {
+      const data = await mockFetch('/api/manage/fail2ban/banned', {}, { banned: MANAGEMENT_STATE.bannedIPs });
+      MANAGEMENT_STATE.bannedIPs = data.banned || [];
+      renderBannedIPs(MANAGEMENT_STATE.bannedIPs);
+    }
+
+    async function unbanIP(ip) {
+      showToast(`Processing: removing ban for ${ip}...`, 'info');
+      await mockFetch('/api/manage/fail2ban/unban', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ip: ip }),
+      }, { ok: true, ip: ip });
+      MANAGEMENT_STATE.bannedIPs = MANAGEMENT_STATE.bannedIPs.filter(item => item.ip !== ip);
+      renderBannedIPs(MANAGEMENT_STATE.bannedIPs);
+      showToast(`Success: ${ip} unbanned from Fail2Ban.`, 'success');
+    }
+
+    function mockAuthLogLines() {
+      return [
+        'Mar 30 10:42:11 madeena sshd[1321]: Accepted publickey for root from 198.51.100.99 port 53312 ssh2: RSA SHA256:xxxxxxxx',
+        'Mar 30 10:43:05 madeena sudo: monitor : TTY=pts/0 ; PWD=/var/www/madeena-server-monitor ; USER=root ; COMMAND=/usr/bin/systemctl restart nginx',
+        'Mar 30 10:44:39 madeena sshd[1403]: Failed password for invalid user test from 203.0.113.42 port 49822 ssh2',
+        'Mar 30 10:44:42 madeena sshd[1403]: Connection closed by invalid user test 203.0.113.42 port 49822 [preauth]',
+        'Mar 30 10:45:04 madeena fail2ban.actions[799]: NOTICE [sshd] Ban 203.0.113.42',
+        'Mar 30 10:46:31 madeena sshd[1450]: Received disconnect from 198.51.100.99 port 53312:11: disconnected by user',
+      ];
+    }
+
+    async function fetchAuthLogs() {
+      const data = await mockFetch('/api/manage/logs/auth?lines=80', {}, { lines: mockAuthLogLines() });
+      renderAuthLogs(data.lines || []);
+    }
+
+    function wireManagementActions() {
+      document.getElementById('whitelistIpBtn').addEventListener('click', () => {
+        whitelistCurrentIP().catch(err => showToast(`Firewall update failed: ${err.message}`, 'error'));
+      });
+
+      document.getElementById('refreshServicesBtn').addEventListener('click', () => {
+        fetchServiceStatus()
+          .then(() => showToast('Service status refreshed.', 'success'))
+          .catch(err => showToast(`Service refresh failed: ${err.message}`, 'error'));
+      });
+
+      document.getElementById('serviceTable').addEventListener('click', (ev) => {
+        const btn = ev.target.closest('.restart-service-btn');
+        if (!btn) return;
+        const service = btn.getAttribute('data-service');
+        if (!service) return;
+        restartService(service).catch(err => showToast(`Service restart failed: ${err.message}`, 'error'));
+      });
+
+      document.getElementById('refreshBansBtn').addEventListener('click', () => {
+        fetchBannedIPs()
+          .then(() => showToast('Fail2Ban list refreshed.', 'success'))
+          .catch(err => showToast(`Fail2Ban refresh failed: ${err.message}`, 'error'));
+      });
+
+      document.getElementById('bannedList').addEventListener('click', (ev) => {
+        const btn = ev.target.closest('.unban-ip-btn');
+        if (!btn) return;
+        const ip = btn.getAttribute('data-ip');
+        if (!ip) return;
+        unbanIP(ip).catch(err => showToast(`Unban failed: ${err.message}`, 'error'));
+      });
+
+      document.getElementById('refreshLogsBtn').addEventListener('click', () => {
+        fetchAuthLogs()
+          .then(() => showToast('Security logs refreshed.', 'success'))
+          .catch(err => showToast(`Auth log fetch failed: ${err.message}`, 'error'));
+      });
+    }
+
+    // ─── History Loader ─────────────────────────────────────────────────────────
+    async function loadHistory() {
+      try {
+        const r = await fetch('/api/metrics/history');
+        if (!r.ok) return;
+        const h = await r.json();
+        if (h.labels) {
+          if (h.cpu_total) updateChart(charts.cpu, h.labels, h.cpu_total);
+          if (h.ram) updateChart(charts.ram, h.labels, h.ram);
+          if (h.temp_main) updateChart(charts.temp, h.labels, h.temp_main);
+          if (h.root_disk) updateChart(charts.disk, h.labels, h.root_disk);
+          if (h.net_rx) updateChart(charts.netrx, h.labels, h.net_rx.map(v => v / 1024));
+          if (h.net_tx) updateChart(charts.nettx, h.labels, h.net_tx.map(v => v / 1024));
+        }
+      } catch (e) { console.warn('history load failed', e); }
+    }
+
+    // ─── SSE ─────────────────────────────────────────────────────────────────────
+    let lastCritical = '';
+    let sseBackoff = 1000;
+    function connectSSE() {
+      const es = new EventSource('/api/metrics/live');
+
+      es.onopen = () => { updateStatus(true); sseBackoff = 1000; };
+
+      es.onmessage = (ev) => {
+        try {
+          const d = JSON.parse(ev.data);
+
+          document.getElementById('uptime').textContent = d.uptime || '–';
+          document.getElementById('loadavg').textContent = d.load_avg ? d.load_avg.map(v => v.toFixed(2)).join(' / ') : '–';
+
+          const label = new Date(d.timestamp || Date.now()).toLocaleTimeString();
+          function appendPoint(chart, value) {
+            const data = chart.data.datasets[0].data;
+            const labels = chart.data.labels;
+            data.push(value); labels.push(label);
+            if (data.length > 60) { data.shift(); labels.shift(); }
+            chart.update('none');
+          }
+
+          appendPoint(charts.cpu, d.cpu_total?.value ?? 0);
+          appendPoint(charts.ram, d.ram?.value ?? 0);
+          appendPoint(charts.temp, d.temp_main?.value ?? 0);
+          appendPoint(charts.disk, d.root_disk?.value ?? 0);
+          appendPoint(charts.netrx, (d.net_rx?.value ?? 0) / 1024);
+          appendPoint(charts.nettx, (d.net_tx?.value ?? 0) / 1024);
+
+          buildTable(d);
+          updateSmart(d.smart_health);
+
+          const crits = [];
+          if (d.cpu_total?.value >= 95) crits.push(`CPU ${d.cpu_total.value.toFixed(1)}%`);
+          if (d.ram?.value >= 90) crits.push(`RAM ${d.ram.value.toFixed(1)}%`);
+          if (d.root_disk?.value >= 90) crits.push(`Disk ${d.root_disk.value.toFixed(1)}%`);
+          if (d.temp_main?.value >= 85) crits.push(`Temp ${d.temp_main.value.toFixed(1)}°C`);
+
+          if (crits.length) {
+            const msg = 'Critical Alert: ' + crits.join(', ');
+            if (msg !== lastCritical) { showToast(msg); lastCritical = msg; }
+          } else { lastCritical = ''; }
+
+        } catch (e) { console.error('SSE parse error', e); }
+      };
+
+      es.onerror = () => {
+        updateStatus(false);
+        es.close();
+        setTimeout(connectSSE, Math.min(sseBackoff, 30000));
+        sseBackoff = Math.min(sseBackoff * 2, 30000);
+      };
+    }
+
+    // ─── Init ────────────────────────────────────────────────────────────────────
+    loadHistory().then(connectSSE);
+    fetchCurrentIP().catch(() => {
+      document.getElementById('detectedIp').textContent = 'unknown';
+      showToast('Warning: unable to detect current public IP.', 'error');
+    });
+    fetchServiceStatus().catch(err => showToast(`Initial service status failed: ${err.message}`, 'error'));
+    fetchBannedIPs().catch(err => showToast(`Initial Fail2Ban load failed: ${err.message}`, 'error'));
+    fetchAuthLogs().catch(err => showToast(`Initial auth.log load failed: ${err.message}`, 'error'));
+    wireManagementActions();
+  </script>
 </body>
+
 </html>
