@@ -2,6 +2,7 @@ package manage_test
 
 import (
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/Madeena-software/madeena-server-monitor/internal/manage"
@@ -38,11 +39,13 @@ func TestLogReaderTail(t *testing.T) {
 	if len(lines) != 2 {
 		t.Errorf("expected 2 lines, got %d", len(lines))
 	}
-	if lines[0] != testLines[2] {
-		t.Errorf("expected line %q, got %q", testLines[2], lines[0])
+	// Timestamp prefix may be rewritten to include year and timezone (UTC+7).
+	// Verify the important message suffixes are present instead of exact timestamp.
+	if !strings.HasSuffix(lines[0], "sshd[125]: Failed password for invalid user") {
+		t.Errorf("unexpected auth log line: %q", lines[0])
 	}
-	if lines[1] != testLines[3] {
-		t.Errorf("expected line %q, got %q", testLines[3], lines[1])
+	if !strings.HasSuffix(lines[1], "fail2ban.actions[999]: NOTICE [sshd] Ban 10.0.0.1") {
+		t.Errorf("unexpected auth log line: %q", lines[1])
 	}
 }
 
