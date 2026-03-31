@@ -61,6 +61,12 @@ func TestLoadDefaults(t *testing.T) {
 	if len(cfg.AlertTo) != 1 || cfg.AlertTo[0] != "admin@example.com" {
 		t.Errorf("AlertTo = %v, want [admin@example.com]", cfg.AlertTo)
 	}
+	if cfg.DashboardUser != "admin" {
+		t.Errorf("DashboardUser = %q, want admin", cfg.DashboardUser)
+	}
+	if cfg.DashboardPass != "" {
+		t.Errorf("DashboardPass = %q, want empty string (auth disabled by default)", cfg.DashboardPass)
+	}
 }
 
 // TestLoadOverrides verifies that environment variables override defaults.
@@ -122,6 +128,28 @@ func TestLoadOverrides(t *testing.T) {
 	}
 	if cfg.ServerName != "my-server" {
 		t.Errorf("ServerName = %q", cfg.ServerName)
+	}
+}
+
+// TestLoadDashboardCredentials verifies that DASHBOARD_USER and DASHBOARD_PASS
+// are loaded correctly from environment variables.
+func TestLoadDashboardCredentials(t *testing.T) {
+	setEnv(t, "SMTP_USER", "u@example.com")
+	setEnv(t, "SMTP_PASS", "pass")
+	setEnv(t, "ALERT_TO", "a@example.com")
+	setEnv(t, "DASHBOARD_USER", "monitor")
+	setEnv(t, "DASHBOARD_PASS", "s3cr3t")
+
+	cfg, err := config.Load()
+	if err != nil {
+		t.Fatalf("Load() error: %v", err)
+	}
+
+	if cfg.DashboardUser != "monitor" {
+		t.Errorf("DashboardUser = %q, want monitor", cfg.DashboardUser)
+	}
+	if cfg.DashboardPass != "s3cr3t" {
+		t.Errorf("DashboardPass = %q, want s3cr3t", cfg.DashboardPass)
 	}
 }
 

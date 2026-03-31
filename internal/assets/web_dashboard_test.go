@@ -29,6 +29,13 @@ func TestManagementUIElementsPresent(t *testing.T) {
 		"id=\"authLogViewer\"",
 		"id=\"refreshLogsBtn\"",
 		"id=\"autoScrollLogs\"",
+		// New: SSH login activity
+		"id=\"sshLogViewer\"",
+		"id=\"refreshSshLogsBtn\"",
+		"id=\"autoScrollSshLogs\"",
+		// New: System users
+		"id=\"systemUsersList\"",
+		"id=\"refreshUsersBtn\"",
 	}
 
 	for _, id := range requiredIDs {
@@ -48,6 +55,9 @@ func TestManagementActionEndpointsPresent(t *testing.T) {
 		"/api/manage/fail2ban/banned",
 		"/api/manage/fail2ban/unban",
 		"/api/manage/logs/auth?lines=80",
+		// New endpoints
+		"/api/manage/logs/ssh?lines=80",
+		"/api/manage/users",
 	}
 
 	for _, endpoint := range requiredEndpoints {
