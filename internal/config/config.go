@@ -55,6 +55,11 @@ type Config struct {
 
 	// Fail2Ban jails to monitor via dashboard
 	Fail2BanJails []string
+
+	// HTTP Basic Auth credentials for the web dashboard.
+	// If DashboardPass is empty, authentication is disabled.
+	DashboardUser string
+	DashboardPass string
 }
 
 // Load reads configuration from environment variables.
@@ -157,6 +162,10 @@ func Load() (*Config, error) {
 	if len(cfg.Fail2BanJails) == 0 {
 		cfg.Fail2BanJails = []string{"sshd", "recidive"}
 	}
+
+	// HTTP Basic Auth credentials for the web dashboard
+	cfg.DashboardUser = getEnv("DASHBOARD_USER", "admin")
+	cfg.DashboardPass = getEnv("DASHBOARD_PASS", "")
 
 	return cfg, nil
 }

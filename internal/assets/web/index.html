@@ -378,6 +378,71 @@
     </div>
   </div>
 
+  <!-- SSH Login Activity -->
+  <div class="mt-6 card p-5">
+    <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+      <div class="flex items-center gap-2">
+        <svg class="w-5 h-5 text-sky-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z">
+          </path>
+        </svg>
+        <h2 class="text-sm font-bold text-slate-200 uppercase tracking-widest">SSH Login Activity</h2>
+      </div>
+      <div class="flex items-center gap-2">
+        <button id="refreshSshLogsBtn"
+          class="px-3 py-1.5 rounded-md text-xs font-semibold bg-slate-800 border border-slate-600 text-slate-200 hover:bg-slate-700">Refresh</button>
+        <label class="inline-flex items-center gap-2 text-xs text-slate-300">
+          <input id="autoScrollSshLogs" type="checkbox" class="rounded border-slate-500 bg-slate-900 text-blue-500"
+            checked>
+          Auto-scroll
+        </label>
+      </div>
+    </div>
+    <div class="terminal">
+      <div class="terminal-header px-4 py-2 flex items-center justify-between">
+        <p class="text-xs text-slate-400">sshd: Accepted | Failed | Disconnected | Invalid user</p>
+        <span id="sshLogTimestamp" class="text-xs text-slate-500">not loaded</span>
+      </div>
+      <pre id="sshLogViewer"
+        class="max-h-[360px] overflow-y-auto p-4 text-xs leading-5 text-sky-300 whitespace-pre-wrap">Loading SSH activity…</pre>
+    </div>
+  </div>
+
+  <!-- System Users -->
+  <div class="mt-6 card p-5">
+    <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+      <div class="flex items-center gap-2">
+        <svg class="w-5 h-5 text-violet-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z">
+          </path>
+        </svg>
+        <h2 class="text-sm font-bold text-slate-200 uppercase tracking-widest">System Users</h2>
+      </div>
+      <button id="refreshUsersBtn"
+        class="px-3 py-1.5 rounded-md text-xs font-semibold bg-slate-800 border border-slate-600 text-slate-200 hover:bg-slate-700">Refresh</button>
+    </div>
+    <p class="text-xs text-slate-400 mb-3">Human accounts with interactive shells (root + UID ≥ 1000). Standard service accounts are excluded.</p>
+    <div class="overflow-x-auto">
+      <table class="w-full border-collapse">
+        <thead>
+          <tr>
+            <th class="text-left px-3 py-2">Username</th>
+            <th class="text-left px-3 py-2">UID</th>
+            <th class="text-left px-3 py-2">Home Directory</th>
+            <th class="text-left px-3 py-2">Shell</th>
+          </tr>
+        </thead>
+        <tbody id="systemUsersList">
+          <tr>
+            <td colspan="4" class="text-center py-6 text-slate-500">Loading users…</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
   <script>
     // ─── Chart Helpers ─────────────────────────────────────────────────────────
     const CHART_COLORS = {
@@ -719,6 +784,62 @@
       renderAuthLogs(data.lines || []);
     }
 
+    // ─── SSH Login Activity ──────────────────────────────────────────────────────
+    function mockSSHLogLines() {
+      return [
+        'Mar 30 10:42:11 madeena sshd[1321]: Accepted publickey for root from 198.51.100.99 port 53312 ssh2: RSA SHA256:xxxxxxxx',
+        'Mar 30 10:44:39 madeena sshd[1403]: Failed password for invalid user test from 203.0.113.42 port 49822 ssh2',
+        'Mar 30 10:44:42 madeena sshd[1403]: Disconnected from invalid user test 203.0.113.42 port 49822 [preauth]',
+        'Mar 30 10:46:31 madeena sshd[1450]: Disconnected from user root 198.51.100.99 port 53312',
+      ];
+    }
+
+    function renderSSHLogs(lines) {
+      const el = document.getElementById('sshLogViewer');
+      el.textContent = lines && lines.length ? lines.join('\n') : 'No SSH login events found.';
+      document.getElementById('sshLogTimestamp').textContent = 'updated ' + new Date().toLocaleTimeString();
+      if (document.getElementById('autoScrollSshLogs').checked) {
+        el.scrollTop = el.scrollHeight;
+      }
+    }
+
+    async function fetchSSHLogs() {
+      const data = await mockFetch('/api/manage/logs/ssh?lines=80', {}, { lines: mockSSHLogLines() });
+      renderSSHLogs(data.lines || []);
+    }
+
+    // ─── System Users ────────────────────────────────────────────────────────────
+    function mockUsersList() {
+      return [
+        { username: 'root', uid: 0, gid: 0, home_dir: '/root', shell: '/bin/bash' },
+        { username: 'ubuntu', uid: 1000, gid: 1000, home_dir: '/home/ubuntu', shell: '/bin/bash' },
+      ];
+    }
+
+    function renderUsers(users) {
+      const el = document.getElementById('systemUsersList');
+      if (!users || !users.length) {
+        el.innerHTML = '<tr><td colspan="4" class="text-center py-6 text-slate-500">No user accounts found.</td></tr>';
+        return;
+      }
+      el.innerHTML = users.map(u => {
+        const rootBadge = u.uid === 0
+          ? '<span class="ml-1 px-1.5 py-0.5 rounded text-xs font-semibold badge-warn">root</span>'
+          : '';
+        return `<tr>
+      <td class="px-3 py-2 text-slate-200 font-medium font-mono">${u.username}${rootBadge}</td>
+      <td class="px-3 py-2 text-slate-400 font-mono">${u.uid}</td>
+      <td class="px-3 py-2 text-slate-400 font-mono">${u.home_dir}</td>
+      <td class="px-3 py-2 text-slate-400 font-mono">${u.shell}</td>
+    </tr>`;
+      }).join('');
+    }
+
+    async function fetchUsers() {
+      const data = await mockFetch('/api/manage/users', {}, { users: mockUsersList() });
+      renderUsers(data.users || []);
+    }
+
     function wireManagementActions() {
       document.getElementById('whitelistIpBtn').addEventListener('click', () => {
         whitelistCurrentIP().catch(err => showToast(`Firewall update failed: ${err.message}`, 'error'));
@@ -756,6 +877,18 @@
         fetchAuthLogs()
           .then(() => showToast('Security logs refreshed.', 'success'))
           .catch(err => showToast(`Auth log fetch failed: ${err.message}`, 'error'));
+      });
+
+      document.getElementById('refreshSshLogsBtn').addEventListener('click', () => {
+        fetchSSHLogs()
+          .then(() => showToast('SSH activity refreshed.', 'success'))
+          .catch(err => showToast(`SSH log fetch failed: ${err.message}`, 'error'));
+      });
+
+      document.getElementById('refreshUsersBtn').addEventListener('click', () => {
+        fetchUsers()
+          .then(() => showToast('User list refreshed.', 'success'))
+          .catch(err => showToast(`User fetch failed: ${err.message}`, 'error'));
       });
     }
 
@@ -841,6 +974,8 @@
     fetchServiceStatus().catch(err => showToast(`Initial service status failed: ${err.message}`, 'error'));
     fetchBannedIPs().catch(err => showToast(`Initial Fail2Ban load failed: ${err.message}`, 'error'));
     fetchAuthLogs().catch(err => showToast(`Initial auth.log load failed: ${err.message}`, 'error'));
+    fetchSSHLogs().catch(err => showToast(`Initial SSH log load failed: ${err.message}`, 'error'));
+    fetchUsers().catch(err => showToast(`Initial user list load failed: ${err.message}`, 'error'));
     wireManagementActions();
   </script>
 </body>
